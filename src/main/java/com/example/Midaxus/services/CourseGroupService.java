@@ -44,12 +44,15 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDTO, String> 
         Subject subject = subjectRepository.findById(dto.getSubjectId())
                 .orElseThrow(() -> new RuntimeException("Subject no encontrado"));
 
-        AcademicPeriod period = academicPeriodRepository.findById(dto.getAcademicPeriodId())
-                .orElseThrow(() -> new RuntimeException("Periodo no encontrado"));
-
-
+        AcademicPeriod period = null;
+        if (dto.getAcademicPeriodId() != null && !dto.getAcademicPeriodId().isEmpty()) {
+            period = academicPeriodRepository.findById(dto.getAcademicPeriodId())
+                    .orElseThrow(() -> new RuntimeException("Periodo no encontrado"));
+        }
         CourseGroup entity = CourseGroupMapper.toEntity(dto);
-
+        if (entity.getCourseGroupId() == null || entity.getCourseGroupId().isEmpty()) {
+            entity.setCourseGroupId(java.util.UUID.randomUUID().toString());
+        }
 
         entity.setTeacher(teacher);
         entity.setSubject(subject);
