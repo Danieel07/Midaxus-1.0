@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -14,6 +15,14 @@ public class StudentController {
 
     @Autowired
     private IStudent<String, StudentDTO> studentService;
+
+    @PostMapping
+    public ResponseEntity<StudentDTO> createStudent(@RequestBody StudentDTO dto) {
+        StudentDTO created = studentService.createStudent(dto);
+        return ResponseEntity
+                .created(URI.create("/api/students/" + created.getStudentId()))
+                .body(created);
+    }
 
     @GetMapping
     public ResponseEntity<List<StudentDTO>> getStudents() {
