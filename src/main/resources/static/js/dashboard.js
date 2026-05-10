@@ -1251,6 +1251,8 @@ async function saveNewScheduleSession() {
     if (res.ok) {
       toast("Grupo de curso creado exitosamente", "success");
       closeCreateScheduleSessionModal();
+      // HU-15: Actualización en tiempo real de la tabla de gestión de cursos
+      loadAdminCourses();
       // Refresh the schedule screen if it's loaded
       if (typeof loadAdminSchedule === "function") loadAdminSchedule();
     } else {
