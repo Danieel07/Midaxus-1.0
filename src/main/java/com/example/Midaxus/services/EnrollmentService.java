@@ -1,5 +1,6 @@
 package com.example.Midaxus.services;
 
+import com.example.Midaxus.model.dtos.EnrollmentDTO;
 import com.example.Midaxus.model.dtos.StudentDTO;
 import com.example.Midaxus.model.entities.CourseGroup;
 import com.example.Midaxus.model.entities.Enrollment;
