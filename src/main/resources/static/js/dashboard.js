@@ -51,7 +51,7 @@ const ROLES = {
       { label:"My Groups",    value:"...", icon:"👥", bg:"bg-violet-100",  dataKey:"myGroups"    }
     ],
     quickActions: [
-      { label:"Registrar Asistencia", desc:"Gestionar asistencias", emoji:"✏️", fn: ()=>toast("Módulo en construcción", "info") },
+      { label:"Registrar Asistencia", desc:"Gestionar asistencias", emoji:"✏️", fn: ()=>navigateTo("attendance") },
       { label:"Configuración", desc:"Ajustes de perfil", emoji:"⚙️", fn: ()=>toast("Módulo en construcción", "info") }
     ],
     showConflictAlert: false,
@@ -212,6 +212,10 @@ function navigateTo(id) {
   
   if (id === "dashboard" && session.role === "TEACHER") {
     loadTeacherCourses();
+  }
+
+  if (id === "attendance" && session.role === "TEACHER") {
+    loadTeacherAttendanceClasses();
   }
 
   if (id === "student-schedule" && session.role === "STUDENT") {
@@ -2283,3 +2287,139 @@ function toast(msg, type="info") {
   setTimeout(() => t.remove(), 3400);
 }
 window.toast = toast;
+
+// ─── ATTENDANCE LOGIC (HU-18) ──────────────────────────────────────────────────
+async function loadTeacherAttendanceClasses() {
+  const list = document.getElementById("attendance-classes-list");
+  if (!list) return;
+  list.innerHTML = '<p class="text-indigo-600 animate-pulse text-sm">Cargando tus clases...</p>';
+  
+  // Hide students container and show empty state
+  const stuContainer = document.getElementById("attendance-students-container");
+  const emptyState = document.getElementById("attendance-empty-state");
+  if (stuContainer) stuContainer.style.display = "none";
+  if (emptyState) emptyState.style.display = "flex";
+
+  let teacherId = session.id;
+  try {
+    const tRes = await fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
+    if (tRes.ok) {
+      const teachers = await tRes.json();
+      const me = teachers.find(t => t.email === session.email);
+      if (me && (me.teacherCode || me.id)) teacherId = me.teacherCode || me.id;
+    }
+  } catch(e) { console.warn("Fallback teacherId", e); }
+
+  try {
+    const [coursesRes, subjectsRes] = await Promise.all([
+      fetch(`/api/course-groups/teacher/${teacherId}`, { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
+      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+    ]);
+
+    if (!coursesRes.ok) throw new Error("Error loading courses");
+    const courses = await coursesRes.json();
+    const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
+
+    if (courses.length === 0) {
+      list.innerHTML = '<p class="text-gray-400 text-sm italic py-4">No tienes clases asignadas.</p>';
+      return;
+    }
+
+    list.innerHTML = courses.map(cg => {
+      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+      const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
+      return `
+        <button onclick="loadClassStudentsForAttendance('${cg.courseGroupId}', '${subjName}', '${cg.code}')" 
+                class="w-full text-left p-3 rounded-lg border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
+          <div class="font-bold text-gray-800 group-hover:text-indigo-700">${subjName}</div>
+          <div class="text-xs text-gray-500">Grupo ${cg.code} · ${cg.capacity} cupos</div>
+        </button>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.error(err);
+    list.innerHTML = '<p class="text-red-500 text-sm">Error al cargar clases.</p>';
+  }
+}
+
+async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupCode) {
+  const container = document.getElementById("attendance-students-container");
+  const emptyState = document.getElementById("attendance-empty-state");
+  const tableBody = document.getElementById("attendance-students-table-body");
+  const title = document.getElementById("attendance-selected-class-title");
+  const dateDisplay = document.getElementById("attendance-date-display");
+
+  if (!container || !tableBody) return;
+
+  title.textContent = `${subjectName} - Grupo ${groupCode}`;
+  dateDisplay.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  
+  tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-indigo-600 animate-pulse">Cargando lista de estudiantes...</td></tr>';
+  if (emptyState) emptyState.style.display = "none";
+  container.style.display = "block";
+
+  try {
+    const res = await fetch(`/api/enrollments/course/${courseGroupId}/students`, {
+      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+    });
+
+    if (!res.ok) throw new Error("Error loading students");
+    const students = await res.json();
+
+    if (students.length === 0) {
+      tableBody.innerHTML = '<tr><td colspan="3" class="p-10 text-center text-gray-400 italic">No hay estudiantes inscritos en este grupo.</td></tr>';
+      return;
+    }
+
+    tableBody.innerHTML = students.map(s => `
+      <tr class="hover:bg-gray-50 transition-colors" id="row-stu-${s.studentId}">
+        <td class="p-3">
+          <div class="font-medium text-gray-800">${s.firstName} ${s.lastName}</div>
+          <div class="text-xs text-gray-400 font-mono">${s.studentId}</div>
+        </td>
+        <td class="p-3 text-center">
+          <span id="status-stu-${s.studentId}" class="text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-400">Sin marcar</span>
+        </td>
+        <td class="p-3">
+          <div class="flex justify-end gap-2">
+            <button onclick="markStudentAttendance('${s.studentId}', true)" 
+                    class="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-200 hover:border-green-500 hover:bg-green-50 text-green-600 transition-all shadow-sm" title="Presente">
+              ✅
+            </button>
+            <button onclick="markStudentAttendance('${s.studentId}', false)" 
+                    class="w-10 h-10 rounded-lg flex items-center justify-center border border-gray-200 hover:border-red-500 hover:bg-red-50 text-red-600 transition-all shadow-sm" title="Ausente">
+              ❌
+            </button>
+          </div>
+        </td>
+      </tr>
+    `).join("");
+
+  } catch (err) {
+    console.error(err);
+    tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-red-500">Error al cargar estudiantes.</td></tr>';
+  }
+}
+
+function markStudentAttendance(studentId, isPresent) {
+  const statusBadge = document.getElementById(`status-stu-${studentId}`);
+  const row = document.getElementById(`row-stu-${studentId}`);
+  
+  if (!statusBadge || !row) return;
+
+  if (isPresent) {
+    statusBadge.textContent = "Asistencia";
+    statusBadge.className = "text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700";
+    toast("Asistencia marcada para el estudiante", "success");
+  } else {
+    statusBadge.textContent = "Inasistencia";
+    statusBadge.className = "text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-700";
+    toast("Inasistencia marcada para el estudiante", "info");
+  }
+}
+
+window.loadTeacherAttendanceClasses = loadTeacherAttendanceClasses;
+window.loadClassStudentsForAttendance = loadClassStudentsForAttendance;
+window.markStudentAttendance = markStudentAttendance;
+
