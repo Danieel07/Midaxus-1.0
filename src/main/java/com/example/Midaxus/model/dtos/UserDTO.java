@@ -5,6 +5,7 @@ public class UserDTO {
     private String userType;
     private String teacherCode;
     private String studentId;
+    private String adminId;
     private String userName;
     private String firstName;
     private String lastName;
@@ -13,14 +14,25 @@ public class UserDTO {
 
     public UserDTO(){}
 
-    public UserDTO(String userType,String teacherCode,String studentId, String userName, String firstName,
+    public UserDTO(String userType,String teacherCode,String studentId, String adminId, String userName, String firstName,
                    String lastName, String email, String password) {
         this.userType = userType;
+        this.teacherCode = teacherCode;
+        this.studentId = studentId;
+        this.adminId = adminId;
         this.userName = userName;
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
         this.password = password;
+    }
+
+    public String getAdminId() {
+        return adminId;
+    }
+
+    public void setAdminId(String adminId) {
+        this.adminId = adminId;
     }
 
     public String getUserType() {

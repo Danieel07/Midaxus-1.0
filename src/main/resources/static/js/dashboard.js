@@ -2554,8 +2554,12 @@ async function saveNewUser() {
     lastName,
     email,
     password,
-    role: "ROLE_" + role,
-    userName: email.split("@")[0]
+    userType: role, // STUDENT, TEACHER, ADMIN
+    userName: email.split("@")[0],
+    // Generar IDs temporales si no existen (HU-17)
+    studentId: role === 'STUDENT' ? "STU-" + Math.floor(Math.random() * 1000000) : null,
+    teacherCode: role === 'TEACHER' ? "TEA-" + Math.floor(Math.random() * 1000000) : null,
+    adminId: role === 'ADMIN' ? "ADM-" + Math.floor(Math.random() * 1000000) : null
   };
 
   try {

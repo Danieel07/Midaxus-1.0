@@ -35,20 +35,18 @@ public class UserService implements IUser<UserDTO, String> {
                 teacher.setLastName(dto.getLastName());
                 teacher.setEmail(dto.getEmail());
                 teacher.setPassword(passwordEncoder.encode(dto.getPassword()));
-                System.out.println("PASSWORD RAW: " + dto.getPassword());
-                System.out.println("PASSWORD ENCODED: " + passwordEncoder.encode(dto.getPassword()));
 
                 Teacher savedTeacher = userRepository.save(teacher);
                 return new UserDTO(
                         "TEACHER",
-                        savedTeacher.getTeacherCode(), // ✔ teacherCode
-                        null,                          // ✔ studentId
+                        savedTeacher.getTeacherCode(),
+                        null,
+                        null,
                         savedTeacher.getUserName(),
                         savedTeacher.getFirstName(),
                         savedTeacher.getLastName(),
                         savedTeacher.getEmail(),
                         null
-
                 );
 
 
@@ -66,16 +64,18 @@ public class UserService implements IUser<UserDTO, String> {
                         "STUDENT",
                         null,
                         savedStudent.getStudentId(),
+                        null,
                         savedStudent.getUserName(),
                         savedStudent.getFirstName(),
                         savedStudent.getLastName(),
                         savedStudent.getEmail(),
-                        null // nunca devuelvas password 🔥
+                        null
                 );
 
 
             case "ADMIN":
                 Admin admin = new Admin();
+                admin.setAdminId(dto.getAdminId());
                 admin.setUserName(dto.getUserName());
                 admin.setFirstName(dto.getFirstName());
                 admin.setLastName(dto.getLastName());
@@ -87,9 +87,10 @@ public class UserService implements IUser<UserDTO, String> {
                         "ADMIN",
                         null,
                         null,
+                        savedAdmin.getAdminId(),
                         savedAdmin.getUserName(),
-                        null,
-                        null,
+                        savedAdmin.getFirstName(),
+                        savedAdmin.getLastName(),
                         savedAdmin.getEmail(),
                         null
                 );
@@ -112,18 +113,18 @@ public class UserService implements IUser<UserDTO, String> {
         if (user == null) return null;
 
         if (user instanceof Teacher t) {
-            return new UserDTO("TEACHER", t.getTeacherCode(), null,
+            return new UserDTO("TEACHER", t.getTeacherCode(), null, null,
                     t.getUserName(), t.getFirstName(), t.getLastName(), t.getEmail(), null);
         }
 
         if (user instanceof Student s) {
-            return new UserDTO("STUDENT", null, s.getStudentId(),
+            return new UserDTO("STUDENT", null, s.getStudentId(), null,
                     s.getUserName(), s.getFirstName(), s.getLastName(), s.getEmail(), null);
         }
 
         if (user instanceof Admin a) {
-            return new UserDTO("ADMIN", null, null,
-                    a.getUserName(), null, null, a.getEmail(), null);
+            return new UserDTO("ADMIN", null, null, a.getAdminId(),
+                    a.getUserName(), a.getFirstName(), a.getLastName(), a.getEmail(), null);
         }
 
         return null;
