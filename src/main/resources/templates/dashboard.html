@@ -313,9 +313,16 @@
               </h1>
               <p class="text-gray-600 mt-1">Administra profesores, estudiantes y administradores del sistema</p>
             </div>
-            <button class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2.5 px-5 rounded-lg flex items-center gap-2 shadow-sm transition-all" onclick="openReAuthModal()">
-              <i class="fas fa-user-plus"></i> Crear nuevo Usuario
-            </button>
+            <div class="flex items-center gap-3">
+               <div class="relative">
+                 <input type="text" id="user-filter-id" oninput="filterUsersById()" placeholder="Filtrar por ID..." 
+                        class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 outline-none transition-all">
+                 <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+               </div>
+               <button class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-5 rounded-lg flex items-center gap-2 shadow-sm transition-all" onclick="openReAuthModal()">
+                 <i class="fas fa-user-plus"></i> Crear Usuario
+               </button>
+            </div>
           </div>
           
           <div class="overflow-x-auto">
@@ -326,6 +333,7 @@
                   <th class="p-3 border-b border-purple-100">Nombre Completo</th>
                   <th class="p-3 border-b border-purple-100">Correo</th>
                   <th class="p-3 border-b border-purple-100">Rol</th>
+                  <th class="p-3 border-b border-purple-100">Contraseña</th>
                   <th class="p-3 border-b border-purple-100">Acciones</th>
                 </tr>
               </thead>
