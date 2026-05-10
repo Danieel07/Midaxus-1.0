@@ -1,11 +1,13 @@
 package com.example.Midaxus.services;
 
 import com.example.Midaxus.model.dtos.EnrollmentDTO;
+import com.example.Midaxus.model.dtos.StudentDTO;
 import com.example.Midaxus.model.entities.CourseGroup;
 import com.example.Midaxus.model.entities.Enrollment;
 import com.example.Midaxus.model.entities.Student;
 import com.example.Midaxus.model.enums.EnrollmentStatus;
 import com.example.Midaxus.model.mapper.EnrollmentMapper;
+import com.example.Midaxus.model.mapper.StudentMapper;
 import com.example.Midaxus.repositories.CourseGroupRepository;
 import com.example.Midaxus.repositories.EnrollmentRepository;
 import com.example.Midaxus.model.entities.InstitutionPolicy;
@@ -30,6 +32,16 @@ public class EnrollmentService implements IEnrollment<EnrollmentDTO, String> {
 
     @Autowired
     private InstitutionPolicyRepository policyRepository;
+
+    public List<StudentDTO> getStudentsByCourseGroup(String courseGroupId) {
+        CourseGroup courseGroup = courseGroupRepository.findById(courseGroupId)
+                .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
+        
+        return enrollmentRepository.getAllByCourseGroup(courseGroup).stream()
+                .filter(e -> e.getStatus() == EnrollmentStatus.ENROLLED)
+                .map(e -> StudentMapper.toDTO(e.getStudent()))
+                .toList();
+    }
 
     @Override
     public EnrollmentDTO createEnrollment(EnrollmentDTO dto) {
