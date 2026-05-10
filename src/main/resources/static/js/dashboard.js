@@ -64,14 +64,13 @@ const ROLES = {
     icon: "🎓",
     theme: "from-blue-600 to-blue-700",
     menu: [
-      { id:"dashboard",        icon:"fas fa-tachometer-alt",  label:"Dashboard"          },
-      { id:"student-schedule", icon:"fas fa-calendar-alt",    label:"Diseñar Horario"    },
-      { id:"schedule",         icon:"fas fa-calendar-check",  label:"Horario Completo"   }
+      { id:"dashboard",          icon:"fas fa-tachometer-alt",  label:"Dashboard"          },
+      { id:"enrollment-process", icon:"fas fa-calendar-alt",    label:"Matrícula y Horario" },
+      { id:"schedule",           icon:"fas fa-calendar-check",  label:"Horario Completo"   }
     ],
     kpis: [],
     quickActions: [
-      { label:"Diseñar Mi Horario", desc:"Organiza tus clases arrastrando", emoji:"📐", fn: ()=>navigateTo("student-schedule") },
-      { label:"Matricular Cursos", desc:"Inscribir materias", emoji:"➕", fn: ()=>openEnrollModal() },
+      { label:"Matrícula y Horario", desc:"Inscribe materias y organiza tu semana", emoji:"📐", fn: ()=>navigateTo("enrollment-process") },
       { label:"Calendario Académico", desc:"Fechas importantes", emoji:"📅", fn: ()=>navigateTo("schedule") }
     ],
     showConflictAlert: false,
@@ -220,11 +219,91 @@ function navigateTo(id) {
     loadTeacherAttendanceClasses();
   }
 
-  if (id === "student-schedule" && session.role === "STUDENT") {
+  if (id === "enrollment-process" && session.role === "STUDENT") {
     initStudentScheduleBuilder();
   }
   
   window.scrollTo(0,0);
+}
+
+// ─── LÓGICA DE MATRÍCULA UNIFICADA (HU-20) ───
+async function saveEnrollmentUnified() {
+  const select = document.getElementById("unified-enroll-select");
+  const courseGroupId = select.value;
+  if (!courseGroupId) {
+    toast("Selecciona una materia para inscribir", "warning");
+    return;
+  }
+
+  let studentId = session.email || session.id;
+  try {
+      const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
+      if (sRes.ok) {
+         const students = await sRes.json();
+         const me = students.find(s => s.email === session.email);
+         if (me && me.studentId) studentId = me.studentId;
+         else if (me && me.id) studentId = me.id;
+      }
+  } catch(e) {}
+
+  const dto = {
+    studentId: studentId,
+    courseGroupId: courseGroupId,
+    status: "ENROLLED"
+  };
+
+  try {
+    const res = await fetch('/api/enrollments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + rawAuth?.token
+      },
+      body: JSON.stringify(dto)
+    });
+
+    if (res.ok) {
+      toast("Materia inscrita correctamente 🎉", "success");
+      // Recargar el pool y el selector sin salir de la pantalla
+      initStudentScheduleBuilder();
+    } else {
+      const errText = await res.text();
+      toast("Error: " + errText, "error");
+    }
+  } catch (err) {
+    toast("Error de red", "error");
+  }
+}
+window.saveEnrollmentUnified = saveEnrollmentUnified;
+
+async function loadAvailableCoursesForUnified() {
+  const select = document.getElementById("unified-enroll-select");
+  if (!select) return;
+
+  try {
+    const [coursesRes, subjectsRes] = await Promise.all([
+      fetch('/api/course-groups', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
+      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+    ]);
+
+    if (coursesRes.ok && subjectsRes.ok) {
+      const courses = await coursesRes.json();
+      const allSubj = await subjectsRes.json();
+
+      select.innerHTML = '<option value="">Seleccione una materia...</option>';
+      courses.forEach(cg => {
+        const subj = allSubj.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+        const subjName = subj ? subj.subjectName : cg.subjectId;
+        const opt = document.createElement("option");
+        opt.value = cg.courseGroupId;
+        opt.textContent = `${subjName} (G${cg.code}) - Cupos: ${cg.capacity}`;
+        select.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    select.innerHTML = '<option value="">Error al cargar</option>';
+  }
 }
 
 // ─── Institution Policies (HU-5) ──────────────────────────────────────────────
@@ -1747,6 +1826,7 @@ async function initStudentScheduleBuilder() {
   buildStudentPool();
   buildStudentGrid();
   updateStudentProgress();
+  loadAvailableCoursesForUnified(); // HU-20: Cargar selector unificado
 }
 
 function buildStudentPool() {
