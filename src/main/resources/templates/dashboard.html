@@ -502,17 +502,17 @@
         </div>
       </section>
       
-      <!-- ── STUDENT SCHEDULE BUILDER ── -->
-      <section id="screen-student-schedule" class="screen">
+      <!-- ── STUDENT ENROLLMENT & SCHEDULE PROCESS (HU-20) ── -->
+      <section id="screen-enrollment-process" class="screen">
         <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
           <!-- Header -->
           <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <div>
               <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
                 <span class="bg-blue-100 text-blue-600 p-2 rounded-lg"><i class="fas fa-calendar-alt"></i></span>
-                Diseñar Mi Horario
+                Matrícula y Horario
               </h1>
-              <p class="text-gray-500 mt-1">Arrastra tus materias inscritas a la grilla para organizar tu semana</p>
+              <p class="text-gray-500 mt-1">Inscribe tus materias y organiza tu horario en un solo lugar</p>
             </div>
             <div class="flex items-center gap-3">
               <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-sm hover:shadow-md" onclick="saveStudentSchedule()">
@@ -524,35 +524,48 @@
             </div>
           </div>
 
-          <!-- Policy Info Banner -->
-          <div id="student-schedule-policies" class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
-            <div class="flex items-start gap-3">
-              <i class="fas fa-info-circle text-blue-500 mt-0.5"></i>
-              <div class="text-sm text-blue-700">
-                <strong>Reglas del horario:</strong>
-                <ul class="mt-1 space-y-1 text-blue-600">
-                  <li>• No puedes colocar la misma materia en días consecutivos</li>
-                  <li>• El bloque de almuerzo está reservado y no admite clases</li>
-                  <li>• No se pueden sobreponer dos materias en el mismo bloque</li>
-                  <li id="policy-sessions-info">• Cada materia requiere un número específico de sesiones semanales</li>
+          <!-- Unified Enrollment Section -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Part 1: Quick Enrollment -->
+            <div class="lg:col-span-1 bg-green-50 border border-green-100 rounded-xl p-5">
+              <h3 class="text-sm font-bold text-green-800 uppercase tracking-wide mb-3 flex items-center gap-2">
+                <i class="fas fa-plus-circle"></i> Inscripción Rápida
+              </h3>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-medium text-green-700 mb-1">Materias Disponibles</label>
+                  <select id="unified-enroll-select" class="w-full border border-green-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-green-500 outline-none bg-white">
+                    <option value="">Cargando materias...</option>
+                  </select>
+                </div>
+                <button class="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition shadow-sm" onclick="saveEnrollmentUnified()">
+                  <i class="fas fa-check"></i> Inscribir Materia
+                </button>
+              </div>
+              <div class="mt-4 pt-4 border-t border-green-200">
+                <p class="text-[10px] font-bold text-green-700 uppercase mb-2">Reglas de Oro:</p>
+                <ul class="text-[10px] text-green-600 space-y-1">
+                  <li>• Sin clases en días seguidos</li>
+                  <li>• El almuerzo es sagrado (bloqueado)</li>
+                  <li>• Una sesión por día por materia</li>
                 </ul>
               </div>
             </div>
-          </div>
 
-          <!-- Pool: Enrolled courses to drag -->
-          <div id="student-pool-zone" class="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 rounded-xl p-5 transition-all duration-300"
-               ondragover="event.preventDefault(); this.classList.add('border-blue-500','bg-blue-100/50')"
-               ondragleave="this.classList.remove('border-blue-500','bg-blue-100/50')"
-               ondrop="onStudentPoolDrop(event)">
-            <div class="flex items-center gap-2 mb-3">
-              <span class="bg-blue-500 text-white p-1.5 rounded-lg"><i class="fas fa-backpack text-sm"></i></span>
-              <span class="text-sm font-bold text-gray-700 uppercase tracking-wide">Mis Materias Inscritas</span>
-              <span class="bg-blue-600 text-white px-2.5 py-0.5 rounded-full text-xs font-bold" id="student-pool-count">0</span>
-              <span class="text-xs text-gray-400 ml-2"><i class="fas fa-hand-pointer"></i> Arrastra al horario</span>
-            </div>
-            <div id="student-pool-slots" class="flex flex-wrap gap-3 min-h-[52px]">
-              <!-- Dynamically filled -->
+            <!-- Part 2: Pool (Enrolled courses to drag) -->
+            <div id="student-pool-zone" class="lg:col-span-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-dashed border-blue-200 rounded-xl p-5 transition-all duration-300"
+                 ondragover="event.preventDefault(); this.classList.add('border-blue-500','bg-blue-100/50')"
+                 ondragleave="this.classList.remove('border-blue-500','bg-blue-100/50')"
+                 ondrop="onStudentPoolDrop(event)">
+              <div class="flex items-center gap-2 mb-3">
+                <span class="bg-blue-500 text-white p-1.5 rounded-lg"><i class="fas fa-backpack text-sm"></i></span>
+                <span class="text-sm font-bold text-gray-700 uppercase tracking-wide">Mis Materias Inscritas</span>
+                <span class="bg-blue-600 text-white px-2.5 py-0.5 rounded-full text-xs font-bold" id="student-pool-count">0</span>
+                <span class="text-xs text-gray-400 ml-2"><i class="fas fa-hand-pointer"></i> Arrastra al horario</span>
+              </div>
+              <div id="student-pool-slots" class="flex flex-wrap gap-3 min-h-[52px]">
+                <!-- Dynamically filled -->
+              </div>
             </div>
           </div>
 
