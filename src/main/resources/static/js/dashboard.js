@@ -52,8 +52,6 @@ const ROLES = {
     ],
     quickActions: [
       { label:"Registrar Asistencia", desc:"Gestionar asistencias", emoji:"✏️", fn: ()=>toast("Módulo en construcción", "info") },
-      { label:"Calificar", desc:"Ingresar notas", emoji:"📊", fn: ()=>navigateTo("grades") },
-      { label:"Material Didáctico", desc:"Subir recursos", emoji:"📚", fn: ()=>toast("Módulo en construcción", "info") },
       { label:"Configuración", desc:"Ajustes de perfil", emoji:"⚙️", fn: ()=>toast("Módulo en construcción", "info") }
     ],
     showConflictAlert: false,
