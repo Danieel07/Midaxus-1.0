@@ -93,7 +93,7 @@ public class AuthService {
         user.setResetTokenExpiration(new Date(System.currentTimeMillis() + 3600000));
         userRepository.save(user);
 
-        String resetUrl = "http://localhost:8080/reset-password?token=" + token;
+        String resetUrl = "http://localhost:8088/reset-password?token=" + token;
         String htmlContent = "<h3>Recuperación de Contraseña</h3>" +
                 "<p>Has solicitado restablecer tu contraseña en Midaxus.</p>" +
                 "<p>Haz clic en el siguiente enlace para continuar:</p>" +
