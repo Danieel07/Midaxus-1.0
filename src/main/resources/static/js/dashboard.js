@@ -2508,10 +2508,12 @@ window.loadClassStudentsForAttendance = loadClassStudentsForAttendance;
 window.markStudentAttendance = markStudentAttendance;
 
 // ─── UNIFIED USER MANAGEMENT (HU-17) ──────────────────────────────────────────
+let allUsersCache = []; // HU-??: Global cache for filtering
+
 async function loadAdminUsers() {
   const tbody = document.getElementById("admin-users-table-body");
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-purple-600 animate-pulse">Cargando usuarios...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-purple-600 animate-pulse">Cargando usuarios...</td></tr>';
 
   try {
     const [teachersRes, studentsRes] = await Promise.all([
@@ -2523,39 +2525,54 @@ async function loadAdminUsers() {
     const students = studentsRes.ok ? await studentsRes.json() : [];
 
     // Consolidar lista
-    const allUsers = [
+    allUsersCache = [
       ...teachers.map(t => ({ id: t.teacherCode || t.id, name: `${t.firstName} ${t.lastName}`, email: t.email, role: 'PROFESOR', rawRole: 'TEACHER' })),
       ...students.map(s => ({ id: s.studentId || s.id, name: `${s.firstName} ${s.lastName}`, email: s.email, role: 'ESTUDIANTE', rawRole: 'STUDENT' }))
     ];
 
-    if (allUsers.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-400">No hay usuarios registrados.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = allUsers.map(u => `
-      <tr class="hover:bg-gray-50 transition-colors">
-        <td class="p-3 border-b font-mono text-xs text-gray-500">${u.id}</td>
-        <td class="p-3 border-b font-medium text-gray-800">${u.name}</td>
-        <td class="p-3 border-b text-gray-600">${u.email}</td>
-        <td class="p-3 border-b">
-          <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${u.rawRole === 'TEACHER' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}">
-            ${u.role}
-          </span>
-        </td>
-        <td class="p-3 border-b">
-          <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')">
-            <i class="fas fa-user-edit"></i>
-          </button>
-        </td>
-      </tr>
-    `).join("");
+    renderAdminUsers(allUsersCache);
 
   } catch (err) {
     console.error("Error loading users", err);
-    tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-500">Error al cargar usuarios.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-red-500">Error al cargar usuarios.</td></tr>';
   }
 }
+
+function renderAdminUsers(users) {
+  const tbody = document.getElementById("admin-users-table-body");
+  if (!tbody) return;
+
+  if (users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-400">No se encontraron usuarios.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = users.map(u => `
+    <tr class="hover:bg-gray-50 transition-colors">
+      <td class="p-3 border-b font-mono text-xs text-gray-500">${u.id}</td>
+      <td class="p-3 border-b font-medium text-gray-800">${u.name}</td>
+      <td class="p-3 border-b text-gray-600">${u.email}</td>
+      <td class="p-3 border-b">
+        <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${u.rawRole === 'TEACHER' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}">
+          ${u.role}
+        </span>
+      </td>
+      <td class="p-3 border-b text-gray-400 font-mono text-xs tracking-widest">••••••••</td>
+      <td class="p-3 border-b">
+        <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')">
+          <i class="fas fa-user-edit"></i>
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function filterUsersById() {
+  const filterValue = document.getElementById("user-filter-id").value.toLowerCase();
+  const filtered = allUsersCache.filter(u => u.id.toLowerCase().includes(filterValue));
+  renderAdminUsers(filtered);
+}
+window.filterUsersById = filterUsersById;
 
 // ─── RE-AUTHENTICATION LOGIC (HU-17) ─────────────────────────────────────────
 function openReAuthModal() {
