@@ -1,7 +1,9 @@
 package com.example.Midaxus.services;
 
+import com.example.Midaxus.model.dtos.auth.ForgotPasswordRequestDTO;
 import com.example.Midaxus.model.dtos.auth.LoginRequestDTO;
 import com.example.Midaxus.model.dtos.auth.LoginResponseDTO;
+import com.example.Midaxus.model.dtos.auth.ResetPasswordRequestDTO;
 import com.example.Midaxus.model.entities.Admin;
 import com.example.Midaxus.model.entities.Student;
 import com.example.Midaxus.model.entities.Teacher;
@@ -10,10 +12,14 @@ import com.example.Midaxus.model.mapper.AdminMapper;
 import com.example.Midaxus.model.mapper.StudentMapper;
 import com.example.Midaxus.model.mapper.TeacherMapper;
 import com.example.Midaxus.repositories.UserRepository;
+import jakarta.mail.MessagingException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.Midaxus.util.JwtUtil;
+
+import java.util.Date;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -76,5 +82,53 @@ public class AuthService {
 
         return new LoginResponseDTO(true, "Login exitoso", role, token, dto);
     }
+
+    public boolean forgotPassword(ForgotPasswordRequestDTO request) {
+        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+        if (user == null) return false;
+
+        String token = UUID.randomUUID().toString();
+        user.setResetToken(token);
+        // Expiration in 1 hour
+        user.setResetTokenExpiration(new Date(System.currentTimeMillis() + 3600000));
+        userRepository.save(user);
+
+        String resetUrl = "http://localhost:8080/reset-password?token=" + token;
+        String htmlContent = "<h3>Recuperación de Contraseña</h3>" +
+                "<p>Has solicitado restablecer tu contraseña en Midaxus.</p>" +
+                "<p>Haz clic en el siguiente enlace para continuar:</p>" +
+                "<a href='" + resetUrl + "'>Restablecer Contraseña</a>" +
+                "<p>Si no solicitaste esto, ignora este correo.</p>";
+
+        try {
+            emailService.sendHtmlEmail(user.getEmail(), "Recuperación de Contraseña - Midaxus", htmlContent);
+        } catch (MessagingException e) {
+            System.err.println("Error enviando correo: " + e.getMessage());
+            return false;
+        }
+
+        return true;
     }
+
+    public boolean validateResetToken(String token) {
+        User user = userRepository.findByResetToken(token).orElse(null);
+        if (user == null) return false;
+        return !user.getResetTokenExpiration().before(new Date());
+    }
+
+    public boolean resetPassword(ResetPasswordRequestDTO request) {
+        User user = userRepository.findByResetToken(request.getToken()).orElse(null);
+        if (user == null) return false;
+
+        if (user.getResetTokenExpiration().before(new Date())) {
+            return false;
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setResetToken(null);
+        user.setResetTokenExpiration(null);
+        userRepository.save(user);
+        return true;
+    }
+}
 
