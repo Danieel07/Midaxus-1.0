@@ -66,14 +66,12 @@ const ROLES = {
     menu: [
       { id:"dashboard",        icon:"fas fa-tachometer-alt",  label:"Dashboard"          },
       { id:"student-schedule", icon:"fas fa-calendar-alt",    label:"Diseñar Horario"    },
-      { id:"schedule",         icon:"fas fa-calendar-check",  label:"Horario Completo"   },
-      { id:"grades",           icon:"fas fa-star-half-alt",   label:"My Grades"          }
+      { id:"schedule",         icon:"fas fa-calendar-check",  label:"Horario Completo"   }
     ],
     kpis: [],
     quickActions: [
       { label:"Diseñar Mi Horario", desc:"Organiza tus clases arrastrando", emoji:"📐", fn: ()=>navigateTo("student-schedule") },
       { label:"Matricular Cursos", desc:"Inscribir materias", emoji:"➕", fn: ()=>openEnrollModal() },
-      { label:"Ver Calificaciones", desc:"Consulta tus notas", emoji:"📄", fn: ()=>navigateTo("grades") },
       { label:"Calendario Académico", desc:"Fechas importantes", emoji:"📅", fn: ()=>navigateTo("schedule") }
     ],
     showConflictAlert: false,
