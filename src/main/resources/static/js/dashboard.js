@@ -200,6 +200,10 @@ function navigateTo(id) {
     loadAdminSubjects();
   }
   
+  if (id === "teachers" && session.role === "ADMIN") {
+    loadAdminUsers(); // HU-17: Unified User Management
+  }
+  
   if (id === "settings" && session.role === "ADMIN") {
     loadInstitutionPolicies();
   }
@@ -2420,4 +2424,169 @@ function markStudentAttendance(studentId, isPresent) {
 window.loadTeacherAttendanceClasses = loadTeacherAttendanceClasses;
 window.loadClassStudentsForAttendance = loadClassStudentsForAttendance;
 window.markStudentAttendance = markStudentAttendance;
+
+// ─── UNIFIED USER MANAGEMENT (HU-17) ──────────────────────────────────────────
+async function loadAdminUsers() {
+  const tbody = document.getElementById("admin-users-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-purple-600 animate-pulse">Cargando usuarios...</td></tr>';
+
+  try {
+    const [teachersRes, studentsRes] = await Promise.all([
+      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
+      fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+    ]);
+
+    const teachers = teachersRes.ok ? await teachersRes.json() : [];
+    const students = studentsRes.ok ? await studentsRes.json() : [];
+
+    // Consolidar lista
+    const allUsers = [
+      ...teachers.map(t => ({ id: t.teacherCode || t.id, name: `${t.firstName} ${t.lastName}`, email: t.email, role: 'PROFESOR', rawRole: 'TEACHER' })),
+      ...students.map(s => ({ id: s.studentId || s.id, name: `${s.firstName} ${s.lastName}`, email: s.email, role: 'ESTUDIANTE', rawRole: 'STUDENT' }))
+    ];
+
+    if (allUsers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-gray-400">No hay usuarios registrados.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = allUsers.map(u => `
+      <tr class="hover:bg-gray-50 transition-colors">
+        <td class="p-3 border-b font-mono text-xs text-gray-500">${u.id}</td>
+        <td class="p-3 border-b font-medium text-gray-800">${u.name}</td>
+        <td class="p-3 border-b text-gray-600">${u.email}</td>
+        <td class="p-3 border-b">
+          <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${u.rawRole === 'TEACHER' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}">
+            ${u.role}
+          </span>
+        </td>
+        <td class="p-3 border-b">
+          <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')">
+            <i class="fas fa-user-edit"></i>
+          </button>
+        </td>
+      </tr>
+    `).join("");
+
+  } catch (err) {
+    console.error("Error loading users", err);
+    tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-500">Error al cargar usuarios.</td></tr>';
+  }
+}
+
+// ─── RE-AUTHENTICATION LOGIC (HU-17) ─────────────────────────────────────────
+function openReAuthModal() {
+  document.getElementById("reauth-password").value = "";
+  document.getElementById("modal-reauth").style.display = "flex";
+  document.getElementById("reauth-password").focus();
+}
+
+function closeReAuthModal() {
+  document.getElementById("modal-reauth").style.display = "none";
+}
+
+async function verifyReAuth() {
+  const password = document.getElementById("reauth-password").value;
+  if (!password) {
+    toast("Ingresa tu contraseña para continuar", "warning");
+    return;
+  }
+
+  try {
+    const res = await fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: session.email,
+        password: password,
+        expectedRole: "ADMIN"
+      })
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      toast("Identidad verificada correctamente", "success");
+      closeReAuthModal();
+      openCreateUserModal();
+    } else {
+      toast("Contraseña incorrecta. Acceso denegado.", "error");
+    }
+  } catch (err) {
+    toast("Error al verificar identidad", "error");
+  }
+}
+
+// ─── USER CREATION LOGIC (HU-17) ─────────────────────────────────────────────
+function openCreateUserModal() {
+  document.getElementById("create-user-name").value = "";
+  document.getElementById("create-user-email").value = "";
+  document.getElementById("create-user-password").value = "";
+  document.getElementById("create-user-role").value = "STUDENT";
+  document.getElementById("modal-create-user").style.display = "flex";
+}
+
+function closeCreateUserModal() {
+  document.getElementById("modal-create-user").style.display = "none";
+}
+
+async function saveNewUser() {
+  const name = document.getElementById("create-user-name").value.trim();
+  const email = document.getElementById("create-user-email").value.trim();
+  const password = document.getElementById("create-user-password").value;
+  const role = document.getElementById("create-user-role").value;
+
+  if (!name || !email || !password) {
+    toast("Todos los campos son obligatorios", "warning");
+    return;
+  }
+  if (password.length < 6) {
+    toast("La contraseña debe tener al menos 6 caracteres", "warning");
+    return;
+  }
+
+  const parts = name.split(" ");
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(" ") || "";
+
+  const payload = {
+    firstName,
+    lastName,
+    email,
+    password,
+    role: "ROLE_" + role,
+    userName: email.split("@")[0]
+  };
+
+  try {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + rawAuth?.token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      toast("¡Usuario creado con éxito!", "success");
+      closeCreateUserModal();
+      loadAdminUsers(); // Recargar tabla en tiempo real
+    } else {
+      const err = await res.json().catch(() => ({ message: "Error desconocido" }));
+      toast(err.message || "No se pudo crear el usuario", "error");
+    }
+  } catch (e) {
+    toast("Error de conexión", "error");
+  }
+}
+
+window.loadAdminUsers = loadAdminUsers;
+window.openReAuthModal = openReAuthModal;
+window.closeReAuthModal = closeReAuthModal;
+window.verifyReAuth = verifyReAuth;
+window.openCreateUserModal = openCreateUserModal;
+window.closeCreateUserModal = closeCreateUserModal;
+window.saveNewUser = saveNewUser;
+
 
