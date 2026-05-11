@@ -13,6 +13,7 @@ import com.example.Midaxus.model.mapper.StudentMapper;
 import com.example.Midaxus.model.mapper.TeacherMapper;
 import com.example.Midaxus.repositories.UserRepository;
 import jakarta.mail.MessagingException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,6 +29,9 @@ public class AuthService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+
+    @Value("${app.url}")
+    private String appUrl;
 
     public AuthService(UserRepository userRepository, EmailService emailService, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
@@ -93,7 +97,7 @@ public class AuthService {
         user.setResetTokenExpiration(new Date(System.currentTimeMillis() + 3600000));
         userRepository.save(user);
 
-        String resetUrl = "http://localhost:8088/reset-password?token=" + token;
+        String resetUrl = appUrl + "/reset-password?token=" + token;
         String htmlContent = "<h3>Recuperación de Contraseña</h3>" +
                 "<p>Has solicitado restablecer tu contraseña en Midaxus.</p>" +
                 "<p>Haz clic en el siguiente enlace para continuar:</p>" +

@@ -37,6 +37,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: midaxus_pass
       MAIL_USER: ${MAIL_USER}
       MAIL_PASS: ${MAIL_PASS}
+      JWT_SECRET: ${JWT_SECRET}
+      APP_URL: ${APP_URL}
 
 volumes:
   mysql_data:
