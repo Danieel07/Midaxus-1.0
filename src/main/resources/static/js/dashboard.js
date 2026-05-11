@@ -290,7 +290,7 @@ async function loadAvailableCoursesForUnified() {
       const courses = await coursesRes.json();
       const allSubj = await subjectsRes.json();
 
-      select.innerHTML = '<option value="">Seleccione una materia...</option>';
+      select.innerHTML = DOMPurify.sanitize('<option value="">Seleccione una materia...</option>');
       courses.forEach(cg => {
         const subj = allSubj.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
         const subjName = subj ? subj.subjectName : cg.subjectId;
@@ -302,7 +302,7 @@ async function loadAvailableCoursesForUnified() {
     }
   } catch (err) {
     console.error(err);
-    select.innerHTML = '<option value="">Error al cargar</option>';
+    select.innerHTML = DOMPurify.sanitize('<option value="">Error al cargar</option>');
   }
 }
 
@@ -375,7 +375,7 @@ async function loadAdminSubjects() {
     if (res.ok) {
       const subjects = await res.json();
       const tbody = document.getElementById("admin-subjects-table-body");
-      tbody.innerHTML = "";
+      tbody.innerHTML = DOMPurify.sanitize("");
       
       subjects.forEach(subj => {
         tbody.innerHTML += `
@@ -547,7 +547,7 @@ async function loadAdminTeachers() {
       const teachers = await res.json();
       const tbody = document.getElementById("admin-teachers-table-body");
       if(!tbody) return;
-      tbody.innerHTML = "";
+      tbody.innerHTML = DOMPurify.sanitize("");
       
       teachers.forEach(t => {
         const comps = t.subjectsIds ? t.subjectsIds.length : 0;
@@ -572,8 +572,8 @@ async function openTeacherDetailsModal(teacherCode, teacherName) {
   document.getElementById("edit-teacher-id").value = teacherCode;
   document.getElementById("edit-teacher-name").innerText = teacherName;
   
-  document.getElementById("teacher-availability-list").innerHTML = "";
-  document.getElementById("teacher-competences-list").innerHTML = "<p class='text-sm text-gray-500'>Cargando...</p>";
+  document.getElementById("teacher-availability-list").innerHTML = DOMPurify.sanitize("");
+  document.getElementById("teacher-competences-list").innerHTML = DOMPurify.sanitize("<p class='text-sm text-gray-500'>Cargando...</p>");
   
   document.getElementById("modal-teacher-details").style.display = "flex";
   
@@ -594,7 +594,7 @@ async function openTeacherDetailsModal(teacherCode, teacherName) {
     
     // Render Competences (Checkboxes)
     const compBox = document.getElementById("teacher-competences-list");
-    compBox.innerHTML = "";
+    compBox.innerHTML = DOMPurify.sanitize("");
     allSubjectsCache.forEach(subj => {
       const isChecked = teacher.subjectsIds && teacher.subjectsIds.includes(subj.idSubject) ? "checked" : "";
       compBox.innerHTML += `
@@ -640,13 +640,13 @@ function addTeacherAvailabilityRowDirect(day, start, end) {
   const ul = document.getElementById("teacher-availability-list");
   const li = document.createElement("li");
   li.className = "flex justify-between items-center bg-white p-2 border rounded text-sm avail-item";
-  li.innerHTML = `
+  li.innerHTML = DOMPurify.sanitize(`
     <span class="font-medium text-gray-700 avail-day w-24">${day}</span>
     <span class="text-gray-600 avail-time"><span class="avail-start">${start}</span> - <span class="avail-end">${end}</span></span>
     <button type="button" class="text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
       <i class="fas fa-trash"></i>
     </button>
-  `;
+  `);
   ul.appendChild(li);
 }
 
@@ -699,7 +699,7 @@ async function saveTeacherDetails() {
 async function loadStudentCourses() {
   const grid = document.getElementById("student-courses-grid");
   if (!grid) return;
-  grid.innerHTML = '<div class="col-span-full text-center py-4 text-blue-600 animate-pulse">Cargando tus clases...</div>';
+  grid.innerHTML = DOMPurify.sanitize('<div class="col-span-full text-center py-4 text-blue-600 animate-pulse">Cargando tus clases...</div>');
 
   try {
     let studentId = session.id;
@@ -721,16 +721,16 @@ async function loadStudentCourses() {
     const courses = await res.json();
     
     if (courses.length === 0) {
-      grid.innerHTML = `
+      grid.innerHTML = DOMPurify.sanitize(`
         <div class="col-span-full flex flex-col items-center justify-center py-10 text-gray-400">
            <span class="text-4xl mb-3">📭</span>
            <p>No tienes cursos inscritos en este periodo académico.</p>
         </div>
-      `;
+      `);
       return;
     }
 
-    grid.innerHTML = "";
+    grid.innerHTML = DOMPurify.sanitize("");
     courses.forEach(cg => {
       grid.innerHTML += `
         <div class="border border-blue-100 bg-blue-50/30 rounded-lg p-5">
@@ -745,7 +745,7 @@ async function loadStudentCourses() {
     });
   } catch (err) {
     console.error("Error loading student courses", err);
-    grid.innerHTML = '<div class="col-span-full text-red-500 bg-red-50 p-4 rounded-md">Ocurrió un error al cargar tus materias inscritas.</div>';
+    grid.innerHTML = DOMPurify.sanitize('<div class="col-span-full text-red-500 bg-red-50 p-4 rounded-md">Ocurrió un error al cargar tus materias inscritas.</div>');
   }
 }
 
@@ -753,7 +753,7 @@ async function loadStudentCourses() {
 async function loadTeacherCourses() {
   const grid = document.getElementById("teacher-courses-grid");
   if (!grid) return;
-  grid.innerHTML = '<div class="col-span-full text-center py-4 text-indigo-600 animate-pulse">Cargando grupos asignados...</div>';
+  grid.innerHTML = DOMPurify.sanitize('<div class="col-span-full text-center py-4 text-indigo-600 animate-pulse">Cargando grupos asignados...</div>');
 
   try {
     let teacherCode = session.id;
@@ -775,11 +775,11 @@ async function loadTeacherCourses() {
     const courses = await res.json();
     
     if (courses.length === 0) {
-      grid.innerHTML = '<div class="col-span-full text-gray-500 italic">No tienes cursos asignados para este periodo.</div>';
+      grid.innerHTML = DOMPurify.sanitize('<div class="col-span-full text-gray-500 italic">No tienes cursos asignados para este periodo.</div>');
       return;
     }
 
-    grid.innerHTML = "";
+    grid.innerHTML = DOMPurify.sanitize("");
     courses.forEach(cg => {
       grid.innerHTML += `
         <div class="bg-white border-l-4 border-indigo-500 rounded-lg p-5 shadow-sm hover:shadow-md transition">
@@ -793,7 +793,7 @@ async function loadTeacherCourses() {
     });
   } catch (err) {
     console.error("Error loading teacher courses", err);
-    grid.innerHTML = '<div class="col-span-full text-red-500 bg-red-50 p-4 rounded-md">Ocurrió un error al cargar tus grupos asignados.</div>';
+    grid.innerHTML = DOMPurify.sanitize('<div class="col-span-full text-red-500 bg-red-50 p-4 rounded-md">Ocurrió un error al cargar tus grupos asignados.</div>');
   }
 }
 
@@ -824,10 +824,10 @@ async function loadAdminCourses() {
 function renderAdminCourses() {
   const tbody = document.getElementById("admin-courses-table-body");
   if (!tbody) return;
-  tbody.innerHTML = "";
+  tbody.innerHTML = DOMPurify.sanitize("");
   
   if (adminCoursesData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No hay sesiones registradas.</td></tr>`;
+    tbody.innerHTML = DOMPurify.sanitize(`<tr><td colspan="5" style="text-align:center);">No hay sesiones registradas.</td></tr>`;
     return;
   }
   
@@ -841,7 +841,7 @@ function renderAdminCourses() {
     const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
     
     const tr = document.createElement("tr");
-    tr.innerHTML = `
+    tr.innerHTML = DOMPurify.sanitize(`
       <td>${cg.code || "N/A"}</td>
       <td>${subjName}</td>
       <td>${teacherName}</td>
@@ -849,7 +849,7 @@ function renderAdminCourses() {
       <td>
         <button class="btn-outline" onclick="openEditSessionModal('${cg.courseGroupId}')"><i class="fas fa-edit"></i> Asignar</button>
       </td>
-    `;
+    `);
     tbody.appendChild(tr);
   });
 }
@@ -859,7 +859,7 @@ function populateTeacherSelect() {
   if (!select) return;
   
   // Limpiar y dejar el default
-  select.innerHTML = '<option value="">Seleccione un profesor...</option>';
+  select.innerHTML = DOMPurify.sanitize('<option value="">Seleccione un profesor...</option>');
   
   // Filtrar profesores con contrato activo (Few-Shot Pattern: startDate != null o status active)
   let activeTeachers = allTeachersData.filter(t => t.startDate !== null && t.startDate !== undefined);
@@ -939,7 +939,7 @@ let enrollableCourses = [];
 async function openEnrollModal() {
   const select = document.getElementById("enroll-course-select");
   if (!select) return;
-  select.innerHTML = '<option value="">Cargando clases disponibles...</option>';
+  select.innerHTML = DOMPurify.sanitize('<option value="">Cargando clases disponibles...</option>');
   document.getElementById("modal-enroll-course").style.display = "flex";
 
   try {
@@ -952,7 +952,7 @@ async function openEnrollModal() {
       enrollableCourses = await coursesRes.json();
       const allSubj = await subjectsRes.json();
 
-      select.innerHTML = '<option value="">Seleccione una clase...</option>';
+      select.innerHTML = DOMPurify.sanitize('<option value="">Seleccione una clase...</option>');
       enrollableCourses.forEach(cg => {
         // Ignorar llenos (opcional si hubiese enrolledCount)
         const subj = allSubj.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
@@ -967,7 +967,7 @@ async function openEnrollModal() {
     }
   } catch (err) {
     console.error(err);
-    select.innerHTML = '<option value="">Error cargando opciones</option>';
+    select.innerHTML = DOMPurify.sanitize('<option value="">Error cargando opciones</option>');
   }
 }
 
@@ -1030,7 +1030,7 @@ async function loadStudentCourses() {
   const grid = document.getElementById("student-courses-grid");
   if (!grid) return;
 
-  grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">⏳ Cargando tus clases...</p>';
+  grid.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-center col-span-full py-8">⏳ Cargando tus clases...</p>');
 
   // Primero resolver el studentId real del usuario logueado
   let studentId = session.email || session.id;
@@ -1053,7 +1053,7 @@ async function loadStudentCourses() {
     ]);
 
     if (!coursesRes.ok) {
-      grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes cursos inscritos en este periodo académico.</p>';
+      grid.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes cursos inscritos en este periodo académico.</p>');
       return;
     }
 
@@ -1062,7 +1062,7 @@ async function loadStudentCourses() {
     const teachers = teachersRes.ok ? await teachersRes.json() : [];
 
     if (!courses || courses.length === 0) {
-      grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes cursos inscritos en este periodo académico.</p>';
+      grid.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes cursos inscritos en este periodo académico.</p>');
       return;
     }
 
@@ -1076,8 +1076,8 @@ async function loadStudentCourses() {
       { bg: "bg-teal-50", border: "border-teal-200", badge: "bg-teal-100 text-teal-700", icon: "text-teal-600" }
     ];
 
-    grid.innerHTML = courses.map((cg, i) => {
-      const c = colors[i % colors.length];
+    grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
+      const c = colors[i % colors.length]);
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
       const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId);
@@ -1100,7 +1100,7 @@ async function loadStudentCourses() {
 
   } catch (err) {
     console.error("Error cargando cursos del estudiante:", err);
-    grid.innerHTML = '<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases. Intenta recargar.</p>';
+    grid.innerHTML = DOMPurify.sanitize('<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases. Intenta recargar.</p>');
   }
 }
 
@@ -1109,7 +1109,7 @@ async function loadTeacherCourses() {
   const grid = document.getElementById("teacher-courses-grid");
   if (!grid) return;
 
-  grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">⏳ Cargando tus clases...</p>';
+  grid.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-center col-span-full py-8">⏳ Cargando tus clases...</p>');
 
   let teacherId = session.id;
   try {
@@ -1129,7 +1129,7 @@ async function loadTeacherCourses() {
     ]);
 
     if (!coursesRes.ok) {
-      grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes clases asignadas actualmente.</p>';
+      grid.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes clases asignadas actualmente.</p>');
       return;
     }
 
@@ -1137,12 +1137,12 @@ async function loadTeacherCourses() {
     const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
 
     if (!courses || courses.length === 0) {
-      grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes clases asignadas actualmente.</p>';
+      grid.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes clases asignadas actualmente.</p>');
       return;
     }
 
-    grid.innerHTML = courses.map((cg, i) => {
-      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+    grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
+      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code));
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
 
       return `
@@ -1161,15 +1161,15 @@ async function loadTeacherCourses() {
 
   } catch (err) {
     console.error("Error cargando cursos del docente:", err);
-    grid.innerHTML = '<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases.</p>';
+    grid.innerHTML = DOMPurify.sanitize('<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases.</p>');
   }
 }
 
 async function openCreateScheduleSessionModal() {
   const subjectSelect = document.getElementById("create-session-course");
   const teacherSelect = document.getElementById("create-session-teacher");
-  subjectSelect.innerHTML = '<option value="">Cargando materias...</option>';
-  teacherSelect.innerHTML = '<option value="">Cargando profesores...</option>';
+  subjectSelect.innerHTML = DOMPurify.sanitize('<option value="">Cargando materias...</option>');
+  teacherSelect.innerHTML = DOMPurify.sanitize('<option value="">Cargando profesores...</option>');
   document.getElementById("modal-create-schedule-session").style.display = "flex";
 
   try {
@@ -1181,7 +1181,7 @@ async function openCreateScheduleSessionModal() {
     const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
     const teachers = teachersRes.ok ? await teachersRes.json() : [];
 
-    subjectSelect.innerHTML = '<option value="">Seleccione una materia...</option>';
+    subjectSelect.innerHTML = DOMPurify.sanitize('<option value="">Seleccione una materia...</option>');
     subjects.forEach(s => {
       const opt = document.createElement("option");
       opt.value = s.idSubject;
@@ -1189,7 +1189,7 @@ async function openCreateScheduleSessionModal() {
       subjectSelect.appendChild(opt);
     });
 
-    teacherSelect.innerHTML = '<option value="">Seleccione un profesor...</option>';
+    teacherSelect.innerHTML = DOMPurify.sanitize('<option value="">Seleccione un profesor...</option>');
     teachers.forEach(t => {
       const opt = document.createElement("option");
       opt.value = t.teacherCode || t.id;
@@ -1198,14 +1198,14 @@ async function openCreateScheduleSessionModal() {
     });
 
     if (subjects.length === 0) {
-      subjectSelect.innerHTML = '<option value="">No hay materias creadas</option>';
+      subjectSelect.innerHTML = DOMPurify.sanitize('<option value="">No hay materias creadas</option>');
     }
     if (teachers.length === 0) {
-      teacherSelect.innerHTML = '<option value="">No hay profesores registrados</option>';
+      teacherSelect.innerHTML = DOMPurify.sanitize('<option value="">No hay profesores registrados</option>');
     }
   } catch(e) {
       console.error(e);
-      subjectSelect.innerHTML = '<option value="">Error cargando datos</option>';
+      subjectSelect.innerHTML = DOMPurify.sanitize('<option value="">Error cargando datos</option>');
   }
 }
 
@@ -1283,7 +1283,7 @@ function buildKPIs(kpis) {
   }
   
   g.style.display = 'grid';
-  g.innerHTML = kpis.map(k => `
+  g.innerHTML = DOMPurify.sanitize(kpis.map(k => `
     <div class="bg-white rounded-xl shadow-md p-6 flex items-center gap-4 transition-transform hover:-translate-y-1">
       <div class="${k.bg || 'bg-blue-100 text-blue-600'} p-4 rounded-full w-14 h-14 flex items-center justify-center text-2xl">
         ${k.icon}
@@ -1292,7 +1292,7 @@ function buildKPIs(kpis) {
         <p class="text-gray-500 text-sm font-medium">${k.label}</p>
         <p class="text-2xl font-bold text-gray-800" ${k.dataKey ? 'data-kpi="' + k.dataKey + '"' : ''}>${k.value}</p>
       </div>
-    </div>`).join("");
+    </div>`).join(""));
 }
 
 // ─── Cargar datos reales para los KPIs del dashboard ──────────────────────────
@@ -1361,18 +1361,18 @@ async function loadDashboardStats() {
 function buildQuickActions(actions) {
   const box = document.getElementById("quick-actions-box");
   if (!box) return;
-  box.innerHTML = "";
+  box.innerHTML = DOMPurify.sanitize("");
   
   actions.forEach(a => {
     const btn = document.createElement("button");
     btn.className = "bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl p-4 text-left transition-colors group";
-    btn.innerHTML = `
+    btn.innerHTML = DOMPurify.sanitize(`
       <div class="flex items-center gap-3 mb-2">
         <span class="text-2xl">${a.emoji || '⚡'}</span>
         <h4 class="font-bold text-gray-800 group-hover:text-blue-600 transition-colors">${a.label}</h4>
       </div>
       <p class="text-sm text-gray-500">${a.desc || ''}</p>
-    `;
+    `);
     btn.addEventListener("click", a.fn);
     box.appendChild(btn);
   });
@@ -1390,7 +1390,7 @@ function buildAvailGrid() {
     html += `<div class="avail-time">${t}</div>`;
     days.forEach(() => html += `<div class="avail-cell" onclick="this.classList.toggle('on')"></div>`);
   });
-  g.innerHTML = html;
+  g.innerHTML = DOMPurify.sanitize(html);
 }
 
 // ─── Schedule UI (toolbar + pool) ─────────────────────────────────────────────
@@ -1402,11 +1402,11 @@ function buildScheduleUI(editable) {
 
   const tb = document.getElementById("schedule-toolbar");
   if (tb) {
-    tb.innerHTML = editable
+    tb.innerHTML = DOMPurify.sanitize(editable
         ? `<button class="btn-sm" onclick="toast('Ready to add class','info')"><i class="fas fa-plus"></i> Add Class</button>
          <button class="btn-sm" onclick="toast('All validated ✓','success')"><i class="fas fa-check-double"></i> Validate</button>
          <button class="btn-sm" onclick="toast('Exporting…','info')"><i class="fas fa-download"></i> Export</button>
-         <span style="margin-left:auto;font-size:.78rem;color:var(--muted);">
+         <span style="margin-left:auto);font-size:.78rem;color:var(--muted);">
            <i class="fas fa-hand-paper"></i> Drag cards · drop to pool to unschedule</span>`
         : `<span style="font-size:.82rem;color:var(--muted);">
            <i class="fas fa-eye"></i> View-only – contact admin to request changes</span>`;
@@ -1421,7 +1421,7 @@ function buildScheduleUI(editable) {
 function buildScheduleGrid(editable) {
   const body = document.getElementById("grid-body");
   if (!body) return;
-  body.innerHTML = "";
+  body.innerHTML = DOMPurify.sanitize("");
 
   // Si no es editable y es estudiante, intentamos cargar su horario desde el backend
   if (!editable && session?.role === "STUDENT") {
@@ -1466,7 +1466,7 @@ function renderScheduleGridUI(body, editable, dataToRender) {
 }
 
 async function loadStudentScheduleGrid(body) {
-    body.innerHTML = '<div class="col-span-full py-10 text-center text-gray-500">Cargando horario...</div>';
+    body.innerHTML = DOMPurify.sanitize('<div class="col-span-full py-10 text-center text-gray-500">Cargando horario...</div>');
     
     let studentId = session.email || session.id;
     try {
@@ -1501,12 +1501,12 @@ async function loadStudentScheduleGrid(body) {
             });
         }
         
-        body.innerHTML = "";
+        body.innerHTML = DOMPurify.sanitize("");
         renderScheduleGridUI(body, false, apiData);
         
     } catch (err) {
         console.error("Error fetching schedule", err);
-        body.innerHTML = '<div class="col-span-full py-10 text-center text-red-500">Error al cargar el horario</div>';
+        body.innerHTML = DOMPurify.sanitize('<div class="col-span-full py-10 text-center text-red-500">Error al cargar el horario</div>');
     }
 }
 
@@ -1515,9 +1515,9 @@ function makeCard(s, slot, day, editable) {
   c.className   = "session-card" + (editable ? "" : " readonly");
   c.dataset.slot = slot;
   c.dataset.day  = day;
-  c.innerHTML    = `<strong>${s.code}</strong> ${s.group}
+  c.innerHTML    = DOMPurify.sanitize(`<strong>${s.code}</strong> ${s.group}
     <span class="sub">${s.teacher}</span>
-    <span class="room"><i class="fas fa-map-marker-alt" style="font-size:.6rem;"></i> ${s.room}</span>`;
+    <span class="room"><i class="fas fa-map-marker-alt" style="font-size:.6rem);"></i> ${s.room}</span>`;
 
   if (editable) {
     c.setAttribute("draggable","true");
@@ -1537,14 +1537,14 @@ function buildPool() {
   const el = document.getElementById("pool-slots");
   const ct = document.getElementById("pool-count");
   if (!el) return;
-  el.innerHTML = "";
+  el.innerHTML = DOMPurify.sanitize("");
   if (ct) ct.textContent = pool.length;
 
   pool.forEach((item, idx) => {
     const c = document.createElement("div");
     c.className = "pool-card";
     c.setAttribute("draggable","true");
-    c.innerHTML = `<i class="fas fa-grip-vertical" style="color:#ccc;margin-right:.3rem;font-size:.7rem;"></i>${item.code} ${item.group}`;
+    c.innerHTML = DOMPurify.sanitize(`<i class="fas fa-grip-vertical" style="color:#ccc);margin-right:.3rem;font-size:.7rem;"></i>${item.code} ${item.group}`;
     c.addEventListener("dragstart", e => {
       dragSrc = { from:"pool", idx };
       c.classList.add("dragging");
@@ -1717,12 +1717,12 @@ function selectCard(el, s, editable) {
   const acts  = document.getElementById("inspector-actions");
   if (!panel) return;
   panel.style.display = "block";
-  info.innerHTML = `<i class="fas fa-info-circle" style="color:var(--teal);margin-right:.4rem;"></i>
+  info.innerHTML = DOMPurify.sanitize(`<i class="fas fa-info-circle" style="color:var(--teal));margin-right:.4rem;"></i>
     <strong>${s.code}</strong> · ${s.teacher} · Room <strong>${s.room}</strong> · ${el.dataset.day} ${el.dataset.slot}`;
-  acts.innerHTML = editable
+  acts.innerHTML = DOMPurify.sanitize(editable
       ? `<button class="btn-outline" onclick="alert('Edit coming soon')">Edit</button>
        <button class="btn-outline danger" onclick="removeCard('${el.dataset.slot}','${el.dataset.day}')">Remove</button>`
-      : "";
+      : "");
 }
 
 function hideInspector() {
@@ -1835,11 +1835,11 @@ function buildStudentPool() {
   const el = document.getElementById("student-pool-slots");
   const ct = document.getElementById("student-pool-count");
   if (!el) return;
-  el.innerHTML = "";
+  el.innerHTML = DOMPurify.sanitize("");
   if (ct) ct.textContent = studentPool.length;
 
   if (studentPool.length === 0) {
-    el.innerHTML = '<p class="text-gray-400 text-sm italic py-2">No tienes materias pendientes de asignar. ¡Inscríbete primero!</p>';
+    el.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-sm italic py-2">No tienes materias pendientes de asignar. ¡Inscríbete primero!</p>');
     return;
   }
 
@@ -1848,12 +1848,12 @@ function buildStudentPool() {
     c.className = `student-pool-card color-${item.colorIdx}`;
     c.setAttribute("draggable", "true");
     const durationH = item.durationMinutes ? (item.durationMinutes / 60) : 2;
-    c.innerHTML = `
+    c.innerHTML = DOMPurify.sanitize(`
       <span class="pool-emoji">${SUBJECT_EMOJIS[item.colorIdx]}</span>
       <span>${item.subjectName}</span>
       <span class="pool-sessions">${durationH}h</span>
       <span class="pool-sessions" style="background:#6366f1">${item.sessionNumber}/${item.sessionsPerWeek}</span>
-    `;
+    `);
     c.addEventListener("dragstart", e => {
       studentDragSrc = { from: "pool", idx };
       c.classList.add("dragging");
@@ -1867,7 +1867,7 @@ function buildStudentPool() {
 function buildStudentGrid() {
   const body = document.getElementById("student-grid-body");
   if (!body) return;
-  body.innerHTML = "";
+  body.innerHTML = DOMPurify.sanitize("");
 
   // Determine lunch slot
   const lunchSlot = getLunchSlot();
@@ -1913,10 +1913,10 @@ function makeStudentCard(s, slot, day) {
   c.dataset.day = day;
   c.setAttribute("draggable", "true");
   const durationH = s.durationMinutes ? (s.durationMinutes / 60) : 2;
-  c.innerHTML = `
+  c.innerHTML = DOMPurify.sanitize(`
     <div>${SUBJECT_EMOJIS[s.colorIdx]} <strong>${s.code}</strong></div>
     <span class="card-subject">${s.subjectName}</span>
-    <span class="card-subject" style="color:#6366f1;font-weight:600;"><i class="fas fa-clock" style="font-size:.6rem"></i> ${durationH}h &middot; ${s.teacherName || ''}</span>
+    <span class="card-subject" style="color:#6366f1);font-weight:600;"><i class="fas fa-clock" style="font-size:.6rem"></i> ${durationH}h &middot; ${s.teacherName || ''}</span>
     <span class="card-remove" onclick="removeStudentCard('${slot}','${day}')" title="Quitar"><i class="fas fa-times"></i></span>
   `;
   c.addEventListener("dragstart", e => {
@@ -2180,7 +2180,7 @@ function generateSlotsFromPolicies() {
 function validateEntireSchedule() {
   const msgBox = document.getElementById("student-schedule-messages");
   if (!msgBox) return;
-  msgBox.innerHTML = "";
+  msgBox.innerHTML = DOMPurify.sanitize("");
 
   const messages = [];
 
@@ -2231,12 +2231,12 @@ function validateEntireSchedule() {
     });
   }
 
-  msgBox.innerHTML = messages.map(m => `
+  msgBox.innerHTML = DOMPurify.sanitize(messages.map(m => `
     <div class="schedule-msg ${m.type}">
       <i class="${m.icon}"></i>
       <span>${m.text}</span>
     </div>
-  `).join("");
+  `).join(""));
 }
 
 function updateStudentProgress() {
@@ -2365,7 +2365,7 @@ function toast(msg, type="info") {
       t.style.borderLeft = "4px solid #ffeeba";
   }
   const icons = { success:"fa-check-circle", error:"fa-exclamation-circle", info:"fa-info-circle", warning:"fa-exclamation-triangle" };
-  t.innerHTML = `<i class="fas ${icons[type]||icons.info}"></i> ${msg}`;
+  t.innerHTML = DOMPurify.sanitize(`<i class="fas ${icons[type]||icons.info}"></i> ${msg}`);
   root.appendChild(t);
   setTimeout(() => { t.style.transition=".3s"; t.style.opacity="0"; t.style.transform="translateX(28px)"; }, 3000);
   setTimeout(() => t.remove(), 3400);
@@ -2376,7 +2376,7 @@ window.toast = toast;
 async function loadTeacherAttendanceClasses() {
   const list = document.getElementById("attendance-classes-list");
   if (!list) return;
-  list.innerHTML = '<p class="text-indigo-600 animate-pulse text-sm">Cargando tus clases...</p>';
+  list.innerHTML = DOMPurify.sanitize('<p class="text-indigo-600 animate-pulse text-sm">Cargando tus clases...</p>');
   
   // Hide students container and show empty state
   const stuContainer = document.getElementById("attendance-students-container");
@@ -2405,12 +2405,12 @@ async function loadTeacherAttendanceClasses() {
     const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
 
     if (courses.length === 0) {
-      list.innerHTML = '<p class="text-gray-400 text-sm italic py-4">No tienes clases asignadas.</p>';
+      list.innerHTML = DOMPurify.sanitize('<p class="text-gray-400 text-sm italic py-4">No tienes clases asignadas.</p>');
       return;
     }
 
-    list.innerHTML = courses.map(cg => {
-      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+    list.innerHTML = DOMPurify.sanitize(courses.map(cg => {
+      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code));
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
       return `
         <button onclick="loadClassStudentsForAttendance('${cg.courseGroupId}', '${subjName}', '${cg.code}')" 
@@ -2423,7 +2423,7 @@ async function loadTeacherAttendanceClasses() {
 
   } catch (err) {
     console.error(err);
-    list.innerHTML = '<p class="text-red-500 text-sm">Error al cargar clases.</p>';
+    list.innerHTML = DOMPurify.sanitize('<p class="text-red-500 text-sm">Error al cargar clases.</p>');
   }
 }
 
@@ -2439,7 +2439,7 @@ async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupC
   title.textContent = `${subjectName} - Grupo ${groupCode}`;
   dateDisplay.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   
-  tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-indigo-600 animate-pulse">Cargando lista de estudiantes...</td></tr>';
+  tableBody.innerHTML = DOMPurify.sanitize('<tr><td colspan="3" class="p-6 text-center text-indigo-600 animate-pulse">Cargando lista de estudiantes...</td></tr>');
   if (emptyState) emptyState.style.display = "none";
   container.style.display = "block";
 
@@ -2452,11 +2452,11 @@ async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupC
     const students = await res.json();
 
     if (students.length === 0) {
-      tableBody.innerHTML = '<tr><td colspan="3" class="p-10 text-center text-gray-400 italic">No hay estudiantes inscritos en este grupo.</td></tr>';
+      tableBody.innerHTML = DOMPurify.sanitize('<tr><td colspan="3" class="p-10 text-center text-gray-400 italic">No hay estudiantes inscritos en este grupo.</td></tr>');
       return;
     }
 
-    tableBody.innerHTML = students.map(s => `
+    tableBody.innerHTML = DOMPurify.sanitize(students.map(s => `
       <tr class="hover:bg-gray-50 transition-colors" id="row-stu-${s.studentId}">
         <td class="p-3">
           <div class="font-medium text-gray-800">${s.firstName} ${s.lastName}</div>
@@ -2478,11 +2478,11 @@ async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupC
           </div>
         </td>
       </tr>
-    `).join("");
+    `).join(""));
 
   } catch (err) {
     console.error(err);
-    tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-red-500">Error al cargar estudiantes.</td></tr>';
+    tableBody.innerHTML = DOMPurify.sanitize('<tr><td colspan="3" class="p-6 text-center text-red-500">Error al cargar estudiantes.</td></tr>');
   }
 }
 
@@ -2513,7 +2513,7 @@ let allUsersCache = []; // HU-??: Global cache for filtering
 async function loadAdminUsers() {
   const tbody = document.getElementById("admin-users-table-body");
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-purple-600 animate-pulse">Cargando usuarios...</td></tr>';
+  tbody.innerHTML = DOMPurify.sanitize('<tr><td colspan="6" class="p-6 text-center text-purple-600 animate-pulse">Cargando usuarios...</td></tr>');
 
   try {
     const [teachersRes, studentsRes] = await Promise.all([
@@ -2534,7 +2534,7 @@ async function loadAdminUsers() {
 
   } catch (err) {
     console.error("Error loading users", err);
-    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-red-500">Error al cargar usuarios.</td></tr>';
+    tbody.innerHTML = DOMPurify.sanitize('<tr><td colspan="6" class="p-6 text-center text-red-500">Error al cargar usuarios.</td></tr>');
   }
 }
 
@@ -2543,11 +2543,11 @@ function renderAdminUsers(users) {
   if (!tbody) return;
 
   if (users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-gray-400">No se encontraron usuarios.</td></tr>';
+    tbody.innerHTML = DOMPurify.sanitize('<tr><td colspan="6" class="p-6 text-center text-gray-400">No se encontraron usuarios.</td></tr>');
     return;
   }
 
-  tbody.innerHTML = users.map(u => `
+  tbody.innerHTML = DOMPurify.sanitize(users.map(u => `
     <tr class="hover:bg-gray-50 transition-colors">
       <td class="p-3 border-b font-mono text-xs text-gray-500">${u.id}</td>
       <td class="p-3 border-b font-medium text-gray-800">${u.name}</td>
@@ -2564,7 +2564,7 @@ function renderAdminUsers(users) {
         </button>
       </td>
     </tr>
-  `).join("");
+  `).join(""));
 }
 
 function filterUsersById() {
