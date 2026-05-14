@@ -75,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const data = await response.json();
-      console.log("Respuesta del servidor:", data);
 
       // Validación REAL del éxito
       if (!data.success) {

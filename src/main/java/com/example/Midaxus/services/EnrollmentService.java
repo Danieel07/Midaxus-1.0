@@ -62,6 +62,11 @@ public class EnrollmentService implements IEnrollment<EnrollmentDTO, String> {
         CourseGroup courseGroup = courseGroupRepository.findById(dto.getCourseGroupId())
                 .orElseThrow(() -> new RuntimeException("Curso no encontrado"));
 
+        // Verificar que el curso tenga profesor y materia asignada (HU-13)
+        if (courseGroup.getTeacher() == null || courseGroup.getSubject() == null) {
+            throw new RuntimeException("El grupo no tiene un profesor o materia asignada");
+        }
+
         //  evitar duplicado
         if (enrollmentRepository.existsByStudentAndCourseGroup(student, courseGroup)) {
             throw new RuntimeException("Ya estás inscrito en este curso");

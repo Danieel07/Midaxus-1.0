@@ -18,6 +18,7 @@ public class StudentMapper {
         if (student == null) return null;
 
         return new StudentDTO(
+                student.getId(),
                 student.getStudentId(),
                 student.getFirstName(),
                 student.getLastName(),

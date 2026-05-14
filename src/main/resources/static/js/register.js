@@ -61,13 +61,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Example: send data to backend
-            console.log('Register attempt:', {
-                name,
-                email,
-                password
-            });
-
             showNotification('Cuenta creada satistafctoriamente! Bienvenido a Midaxus   ...', 'success');
             
             // Redirect to login page

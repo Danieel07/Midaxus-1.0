@@ -5,6 +5,7 @@ import java.util.Date;
 public class StudentDTO {
 
 
+    private String id;
     private String studentId;
     private String firstName;
     private String lastName;
@@ -15,10 +16,10 @@ public class StudentDTO {
 
     public StudentDTO() {}
 
-    public StudentDTO( String studentId, String firstName, String lastName,
+    public StudentDTO( String id, String studentId, String firstName, String lastName,
                        String userName, String email, String password, Date signInDate ) {
 
-
+        this.id = id;
         this.studentId = studentId;
         this.firstName = firstName;
         this.lastName = lastName;
@@ -26,6 +27,14 @@ public class StudentDTO {
         this.email = email;
         this.password = password;
         this.signInDate = signInDate;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
 
