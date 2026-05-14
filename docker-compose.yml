@@ -35,8 +35,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/midaxus_db
       SPRING_DATASOURCE_USERNAME: midaxus
       SPRING_DATASOURCE_PASSWORD: midaxus_pass
-      MAIL_USER: ${MAIL_USER}
-      MAIL_PASS: ${MAIL_PASS}
+      MAIL_USER: ${MAIL_USER:-your_email@gmail.com}
+      MAIL_PASS: ${MAIL_PASS:-your_app_password}
+      JWT_SECRET: ${JWT_SECRET:-your_default_secret_key_that_is_at_least_32_characters_long}
+      APP_URL: ${APP_URL:-http://localhost:8088}
 
 volumes:
   mysql_data:

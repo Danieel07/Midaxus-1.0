@@ -827,7 +827,7 @@ function renderAdminCourses() {
   tbody.innerHTML = "";
   
   if (adminCoursesData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No hay sesiones registradas.</td></tr>`;
+    tbody.innerHTML = DOMPurify.sanitize(`<tr><td colspan="5" style="text-align:center;">No hay sesiones registradas.</td></tr>`);
     return;
   }
   
@@ -1076,7 +1076,7 @@ async function loadStudentCourses() {
       { bg: "bg-teal-50", border: "border-teal-200", badge: "bg-teal-100 text-teal-700", icon: "text-teal-600" }
     ];
 
-    grid.innerHTML = courses.map((cg, i) => {
+    grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
       const c = colors[i % colors.length];
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
@@ -1096,7 +1096,7 @@ async function loadStudentCourses() {
           </div>
         </div>
       `;
-    }).join("");
+    }).join(""));
 
   } catch (err) {
     console.error("Error cargando cursos del estudiante:", err);
@@ -1141,7 +1141,7 @@ async function loadTeacherCourses() {
       return;
     }
 
-    grid.innerHTML = courses.map((cg, i) => {
+    grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
 
@@ -1157,7 +1157,7 @@ async function loadTeacherCourses() {
           </div>
         </div>
       `;
-    }).join("");
+    }).join(""));
 
   } catch (err) {
     console.error("Error cargando cursos del docente:", err);
@@ -1402,14 +1402,14 @@ function buildScheduleUI(editable) {
 
   const tb = document.getElementById("schedule-toolbar");
   if (tb) {
-    tb.innerHTML = editable
+    tb.innerHTML = DOMPurify.sanitize(editable
         ? `<button class="btn-sm" onclick="toast('Ready to add class','info')"><i class="fas fa-plus"></i> Add Class</button>
          <button class="btn-sm" onclick="toast('All validated ✓','success')"><i class="fas fa-check-double"></i> Validate</button>
          <button class="btn-sm" onclick="toast('Exporting…','info')"><i class="fas fa-download"></i> Export</button>
          <span style="margin-left:auto;font-size:.78rem;color:var(--muted);">
            <i class="fas fa-hand-paper"></i> Drag cards · drop to pool to unschedule</span>`
         : `<span style="font-size:.82rem;color:var(--muted);">
-           <i class="fas fa-eye"></i> View-only – contact admin to request changes</span>`;
+           <i class="fas fa-eye"></i> View-only – contact admin to request changes</span>`);
   }
 
   const pz = document.getElementById("pool-zone");
@@ -1515,9 +1515,9 @@ function makeCard(s, slot, day, editable) {
   c.className   = "session-card" + (editable ? "" : " readonly");
   c.dataset.slot = slot;
   c.dataset.day  = day;
-  c.innerHTML    = `<strong>${s.code}</strong> ${s.group}
+  c.innerHTML    = DOMPurify.sanitize(`<strong>${s.code}</strong> ${s.group}
     <span class="sub">${s.teacher}</span>
-    <span class="room"><i class="fas fa-map-marker-alt" style="font-size:.6rem;"></i> ${s.room}</span>`;
+    <span class="room"><i class="fas fa-map-marker-alt" style="font-size:.6rem;"></i> ${s.room}</span>`);
 
   if (editable) {
     c.setAttribute("draggable","true");
@@ -1544,7 +1544,7 @@ function buildPool() {
     const c = document.createElement("div");
     c.className = "pool-card";
     c.setAttribute("draggable","true");
-    c.innerHTML = `<i class="fas fa-grip-vertical" style="color:#ccc;margin-right:.3rem;font-size:.7rem;"></i>${item.code} ${item.group}`;
+    c.innerHTML = DOMPurify.sanitize(`<i class="fas fa-grip-vertical" style="color:#ccc;margin-right:.3rem;font-size:.7rem;"></i>${item.code} ${item.group}`);
     c.addEventListener("dragstart", e => {
       dragSrc = { from:"pool", idx };
       c.classList.add("dragging");
@@ -1717,12 +1717,12 @@ function selectCard(el, s, editable) {
   const acts  = document.getElementById("inspector-actions");
   if (!panel) return;
   panel.style.display = "block";
-  info.innerHTML = `<i class="fas fa-info-circle" style="color:var(--teal);margin-right:.4rem;"></i>
-    <strong>${s.code}</strong> · ${s.teacher} · Room <strong>${s.room}</strong> · ${el.dataset.day} ${el.dataset.slot}`;
-  acts.innerHTML = editable
+  info.innerHTML = DOMPurify.sanitize(`<i class="fas fa-info-circle" style="color:var(--teal);margin-right:.4rem;"></i>
+    <strong>${s.code}</strong> · ${s.teacher} · Room <strong>${s.room}</strong> · ${el.dataset.day} ${el.dataset.slot}`);
+  acts.innerHTML = DOMPurify.sanitize(editable
       ? `<button class="btn-outline" onclick="alert('Edit coming soon')">Edit</button>
        <button class="btn-outline danger" onclick="removeCard('${el.dataset.slot}','${el.dataset.day}')">Remove</button>`
-      : "";
+      : "");
 }
 
 function hideInspector() {
@@ -1913,12 +1913,12 @@ function makeStudentCard(s, slot, day) {
   c.dataset.day = day;
   c.setAttribute("draggable", "true");
   const durationH = s.durationMinutes ? (s.durationMinutes / 60) : 2;
-  c.innerHTML = `
+  c.innerHTML = DOMPurify.sanitize(`
     <div>${SUBJECT_EMOJIS[s.colorIdx]} <strong>${s.code}</strong></div>
     <span class="card-subject">${s.subjectName}</span>
     <span class="card-subject" style="color:#6366f1;font-weight:600;"><i class="fas fa-clock" style="font-size:.6rem"></i> ${durationH}h &middot; ${s.teacherName || ''}</span>
     <span class="card-remove" onclick="removeStudentCard('${slot}','${day}')" title="Quitar"><i class="fas fa-times"></i></span>
-  `;
+  `);
   c.addEventListener("dragstart", e => {
     studentDragSrc = { from: "cell", slot, day };
     c.classList.add("dragging");
@@ -2409,7 +2409,7 @@ async function loadTeacherAttendanceClasses() {
       return;
     }
 
-    list.innerHTML = courses.map(cg => {
+    list.innerHTML = DOMPurify.sanitize(courses.map(cg => {
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
       return `
@@ -2419,7 +2419,7 @@ async function loadTeacherAttendanceClasses() {
           <div class="text-xs text-gray-500">Grupo ${cg.code} · ${cg.capacity} cupos</div>
         </button>
       `;
-    }).join("");
+    }).join(""));
 
   } catch (err) {
     console.error(err);
