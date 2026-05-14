@@ -827,7 +827,7 @@ function renderAdminCourses() {
   tbody.innerHTML = DOMPurify.sanitize("");
   
   if (adminCoursesData.length === 0) {
-    tbody.innerHTML = DOMPurify.sanitize(`<tr><td colspan="5" style="text-align:center);">No hay sesiones registradas.</td></tr>`;
+    tbody.innerHTML = DOMPurify.sanitize(`<tr><td colspan="5" style="text-align:center;">No hay sesiones registradas.</td></tr>`);
     return;
   }
   
@@ -1077,7 +1077,7 @@ async function loadStudentCourses() {
     ];
 
     grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
-      const c = colors[i % colors.length]);
+      const c = colors[i % colors.length];
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
       const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId);
@@ -1096,7 +1096,7 @@ async function loadStudentCourses() {
           </div>
         </div>
       `;
-    }).join("");
+    }).join(""));
 
   } catch (err) {
     console.error("Error cargando cursos del estudiante:", err);
@@ -1142,7 +1142,7 @@ async function loadTeacherCourses() {
     }
 
     grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
-      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code));
+      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
 
       return `
@@ -1157,7 +1157,7 @@ async function loadTeacherCourses() {
           </div>
         </div>
       `;
-    }).join("");
+    }).join(""));
 
   } catch (err) {
     console.error("Error cargando cursos del docente:", err);
@@ -1409,7 +1409,7 @@ function buildScheduleUI(editable) {
          <span style="margin-left:auto);font-size:.78rem;color:var(--muted);">
            <i class="fas fa-hand-paper"></i> Drag cards · drop to pool to unschedule</span>`
         : `<span style="font-size:.82rem;color:var(--muted);">
-           <i class="fas fa-eye"></i> View-only – contact admin to request changes</span>`;
+           <i class="fas fa-eye"></i> View-only – contact admin to request changes</span>`);
   }
 
   const pz = document.getElementById("pool-zone");
@@ -1517,7 +1517,7 @@ function makeCard(s, slot, day, editable) {
   c.dataset.day  = day;
   c.innerHTML    = DOMPurify.sanitize(`<strong>${s.code}</strong> ${s.group}
     <span class="sub">${s.teacher}</span>
-    <span class="room"><i class="fas fa-map-marker-alt" style="font-size:.6rem);"></i> ${s.room}</span>`;
+    <span class="room"><i class="fas fa-map-marker-alt" style="font-size:.6rem);"></i> ${s.room}</span>`);
 
   if (editable) {
     c.setAttribute("draggable","true");
@@ -1544,7 +1544,7 @@ function buildPool() {
     const c = document.createElement("div");
     c.className = "pool-card";
     c.setAttribute("draggable","true");
-    c.innerHTML = DOMPurify.sanitize(`<i class="fas fa-grip-vertical" style="color:#ccc);margin-right:.3rem;font-size:.7rem;"></i>${item.code} ${item.group}`;
+    c.innerHTML = DOMPurify.sanitize(`<i class="fas fa-grip-vertical" style="color:#ccc);margin-right:.3rem;font-size:.7rem;"></i>${item.code} ${item.group}`);
     c.addEventListener("dragstart", e => {
       dragSrc = { from:"pool", idx };
       c.classList.add("dragging");
@@ -1718,7 +1718,7 @@ function selectCard(el, s, editable) {
   if (!panel) return;
   panel.style.display = "block";
   info.innerHTML = DOMPurify.sanitize(`<i class="fas fa-info-circle" style="color:var(--teal));margin-right:.4rem;"></i>
-    <strong>${s.code}</strong> · ${s.teacher} · Room <strong>${s.room}</strong> · ${el.dataset.day} ${el.dataset.slot}`;
+    <strong>${s.code}</strong> · ${s.teacher} · Room <strong>${s.room}</strong> · ${el.dataset.day} ${el.dataset.slot}`);
   acts.innerHTML = DOMPurify.sanitize(editable
       ? `<button class="btn-outline" onclick="alert('Edit coming soon')">Edit</button>
        <button class="btn-outline danger" onclick="removeCard('${el.dataset.slot}','${el.dataset.day}')">Remove</button>`
@@ -1918,7 +1918,7 @@ function makeStudentCard(s, slot, day) {
     <span class="card-subject">${s.subjectName}</span>
     <span class="card-subject" style="color:#6366f1);font-weight:600;"><i class="fas fa-clock" style="font-size:.6rem"></i> ${durationH}h &middot; ${s.teacherName || ''}</span>
     <span class="card-remove" onclick="removeStudentCard('${slot}','${day}')" title="Quitar"><i class="fas fa-times"></i></span>
-  `;
+  `);
   c.addEventListener("dragstart", e => {
     studentDragSrc = { from: "cell", slot, day };
     c.classList.add("dragging");
@@ -2410,7 +2410,7 @@ async function loadTeacherAttendanceClasses() {
     }
 
     list.innerHTML = DOMPurify.sanitize(courses.map(cg => {
-      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code));
+      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
       return `
         <button onclick="loadClassStudentsForAttendance('${cg.courseGroupId}', '${subjName}', '${cg.code}')" 
@@ -2419,7 +2419,7 @@ async function loadTeacherAttendanceClasses() {
           <div class="text-xs text-gray-500">Grupo ${cg.code} · ${cg.capacity} cupos</div>
         </button>
       `;
-    }).join("");
+    }).join(""));
 
   } catch (err) {
     console.error(err);
