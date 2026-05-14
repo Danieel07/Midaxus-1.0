@@ -695,108 +695,6 @@ async function saveTeacherDetails() {
   }
 }
 
-// ─── Student Courses (HU-13) ──────────────────────────────────────────────────
-async function loadStudentCourses() {
-  const grid = document.getElementById("student-courses-grid");
-  if (!grid) return;
-  grid.innerHTML = '<div class="col-span-full text-center py-4 text-blue-600 animate-pulse">Cargando tus clases...</div>';
-
-  try {
-    let studentId = session.id;
-    // Resolver el studentId real si la sesión tiene el email
-    try {
-      const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
-      if (sRes.ok) {
-         const students = await sRes.json();
-         const me = students.find(s => s.email === session.email);
-         if (me && me.studentId) studentId = me.studentId;
-      }
-    } catch(e) { console.warn("No se pudo resolver StudentId desde la API"); }
-
-    const res = await fetch(`/api/enrollments/student/${studentId}/courses`, { 
-      headers: { 'Authorization': 'Bearer ' + rawAuth?.token } 
-    });
-    
-    if (!res.ok) throw new Error("Error fetching student courses");
-    const courses = await res.json();
-    
-    if (courses.length === 0) {
-      grid.innerHTML = `
-        <div class="col-span-full flex flex-col items-center justify-center py-10 text-gray-400">
-           <span class="text-4xl mb-3">📭</span>
-           <p>No tienes cursos inscritos en este periodo académico.</p>
-        </div>
-      `;
-      return;
-    }
-
-    grid.innerHTML = "";
-    courses.forEach(cg => {
-      grid.innerHTML += `
-        <div class="border border-blue-100 bg-blue-50/30 rounded-lg p-5">
-          <div class="flex justify-between items-start mb-2">
-            <h4 class="font-bold text-blue-800">${cg.subjectId || "Materia " + cg.code}</h4>
-            <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium">Inscrito</span>
-          </div>
-          <p class="text-sm text-gray-600 mb-1">Grupo: <strong>${cg.code}</strong></p>
-          <p class="text-sm text-gray-600">Profesor: ${cg.teacherId || "Sin asignar"}</p>
-        </div>
-      `;
-    });
-  } catch (err) {
-    console.error("Error loading student courses", err);
-    grid.innerHTML = '<div class="col-span-full text-red-500 bg-red-50 p-4 rounded-md">Ocurrió un error al cargar tus materias inscritas.</div>';
-  }
-}
-
-// ─── Teacher Courses ──────────────────────────────────────────────────────────
-async function loadTeacherCourses() {
-  const grid = document.getElementById("teacher-courses-grid");
-  if (!grid) return;
-  grid.innerHTML = '<div class="col-span-full text-center py-4 text-indigo-600 animate-pulse">Cargando grupos asignados...</div>';
-
-  try {
-    let teacherCode = session.id;
-    // Resolver el teacherCode real si la sesión tiene el email
-    try {
-      const tRes = await fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
-      if (tRes.ok) {
-         const teachers = await tRes.json();
-         const me = teachers.find(t => t.email === session.email);
-         if (me && me.teacherCode) teacherCode = me.teacherCode;
-      }
-    } catch(e) { console.warn("No se pudo resolver TeacherCode desde la API"); }
-
-    const res = await fetch(`/api/course-groups/teacher/${teacherCode}`, { 
-      headers: { 'Authorization': 'Bearer ' + rawAuth?.token } 
-    });
-    
-    if (!res.ok) throw new Error("Error fetching teacher courses");
-    const courses = await res.json();
-    
-    if (courses.length === 0) {
-      grid.innerHTML = '<div class="col-span-full text-gray-500 italic">No tienes cursos asignados para este periodo.</div>';
-      return;
-    }
-
-    grid.innerHTML = "";
-    courses.forEach(cg => {
-      grid.innerHTML += `
-        <div class="bg-white border-l-4 border-indigo-500 rounded-lg p-5 shadow-sm hover:shadow-md transition">
-          <h3 class="text-lg font-bold text-gray-800">${cg.subjectId || "Materia " + cg.code}</h3>
-          <div class="mt-4 flex justify-between items-center text-sm text-gray-600">
-            <span class="bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full font-medium">Grupo ${cg.code}</span>
-            <span class="flex items-center gap-1"><i class="fas fa-users"></i> Cupos: <span class="font-semibold text-gray-900">${cg.capacity}</span></span>
-          </div>
-        </div>
-      `;
-    });
-  } catch (err) {
-    console.error("Error loading teacher courses", err);
-    grid.innerHTML = '<div class="col-span-full text-red-500 bg-red-50 p-4 rounded-md">Ocurrió un error al cargar tus grupos asignados.</div>';
-  }
-}
-
 // ─── Admin Courses (HU-13) ───────────────────────────────────────────────────
 let adminCoursesData = [];
 let allTeachersData = [];
@@ -1076,7 +974,7 @@ async function loadStudentCourses() {
       { bg: "bg-teal-50", border: "border-teal-200", badge: "bg-teal-100 text-teal-700", icon: "text-teal-600" }
     ];
 
-    grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
+    const htmlContent = courses.map((cg, i) => {
       const c = colors[i % colors.length];
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
@@ -1096,11 +994,18 @@ async function loadStudentCourses() {
           </div>
         </div>
       `;
-    }).join(""));
+    }).join("");
+
+    if (window.DOMPurify) {
+      grid.innerHTML = DOMPurify.sanitize(htmlContent);
+    } else {
+      console.warn("DOMPurify not loaded, using insecure innerHTML");
+      grid.innerHTML = htmlContent;
+    }
 
   } catch (err) {
     console.error("Error cargando cursos del estudiante:", err);
-    grid.innerHTML = '<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases. Intenta recargar.</p>';
+    grid.innerHTML = `<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases: ${err.message}. Intenta recargar.</p>`;
   }
 }
 
@@ -1141,7 +1046,7 @@ async function loadTeacherCourses() {
       return;
     }
 
-    grid.innerHTML = DOMPurify.sanitize(courses.map((cg, i) => {
+    const htmlContent = courses.map((cg, i) => {
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
 
@@ -1157,11 +1062,17 @@ async function loadTeacherCourses() {
           </div>
         </div>
       `;
-    }).join(""));
+    }).join("");
+
+    if (window.DOMPurify) {
+      grid.innerHTML = DOMPurify.sanitize(htmlContent);
+    } else {
+      grid.innerHTML = htmlContent;
+    }
 
   } catch (err) {
     console.error("Error cargando cursos del docente:", err);
-    grid.innerHTML = '<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases.</p>';
+    grid.innerHTML = `<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases: ${err.message}.</p>`;
   }
 }
 
