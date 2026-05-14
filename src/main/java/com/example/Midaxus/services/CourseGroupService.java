@@ -7,10 +7,12 @@ import com.example.Midaxus.model.mapper.CourseGroupMapper;
 import com.example.Midaxus.repositories.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional
 public class CourseGroupService implements ICourseGroup<CourseGroupDTO, String> {
 
     @Autowired
@@ -39,10 +41,13 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDTO, String> 
 
 
         Teacher teacher = teacherRepository.findByTeacherCode(dto.getTeacherId())
-                .orElseThrow(() -> new RuntimeException("Teacher no encontrado"));
+                .orElseGet(() -> teacherRepository.findById(dto.getTeacherId())
+                        .orElseThrow(() -> new RuntimeException("Profesor no encontrado: " + dto.getTeacherId())));
 
         Subject subject = subjectRepository.findById(dto.getSubjectId())
-                .orElseThrow(() -> new RuntimeException("Subject no encontrado"));
+                .orElseThrow(() -> new RuntimeException("Materia no encontrada: " + dto.getSubjectId()));
+
+        // Se ha removido la restricción de habilitación por solicitud (el Admin puede asignar cualquier profesor a cualquier materia)
 
         AcademicPeriod period = null;
         if (dto.getAcademicPeriodId() != null && !dto.getAcademicPeriodId().isEmpty()) {
@@ -70,22 +75,25 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDTO, String> 
         CourseGroup existing = courseGroupRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("CourseGroup no encontrado"));
 
-        Teacher teacher = null;
+        Teacher teacher = existing.getTeacher();
         if (dto.getTeacherId() != null && !dto.getTeacherId().isEmpty()) {
             teacher = teacherRepository.findByTeacherCode(dto.getTeacherId())
-                    .orElseGet(() -> teacherRepository.findById(dto.getTeacherId()).orElse(null));
+                    .orElseGet(() -> teacherRepository.findById(dto.getTeacherId())
+                            .orElseThrow(() -> new RuntimeException("Teacher no encontrado")));
         }
 
         Subject subject = existing.getSubject();
-        if (dto.getSubjectId() != null) {
-            subject = subjectRepository.findById(dto.getSubjectId()).orElse(existing.getSubject());
+        if (dto.getSubjectId() != null && !dto.getSubjectId().isEmpty()) {
+            subject = subjectRepository.findById(dto.getSubjectId())
+                    .orElseThrow(() -> new RuntimeException("Subject no encontrado"));
         }
 
         AcademicPeriod period = existing.getAcademicPeriod();
-        if (dto.getAcademicPeriodId() != null) {
+        if (dto.getAcademicPeriodId() != null && !dto.getAcademicPeriodId().isEmpty()) {
             period = academicPeriodRepository.findById(dto.getAcademicPeriodId()).orElse(existing.getAcademicPeriod());
         }
 
+        // La restricción de habilitación se ha removido para permitir flexibilidad total al administrador
         existing.setTeacher(teacher);
         existing.setSubject(subject);
         existing.setAcademicPeriod(period);

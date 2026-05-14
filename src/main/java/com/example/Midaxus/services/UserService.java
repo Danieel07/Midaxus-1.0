@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class UserService implements IUser<UserDTO, String> {
 
@@ -100,9 +102,33 @@ public class UserService implements IUser<UserDTO, String> {
         }
     }
 
+    @Autowired
+    private com.example.Midaxus.repositories.EnrollmentRepository enrollmentRepository;
+
+    @Autowired
+    private com.example.Midaxus.repositories.CourseGroupRepository courseGroupRepository;
+
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public void deleteUser(String s) {
-        if (userRepository.existsById(s)){
+        User user = userRepository.findById(s).orElse(null);
+        if (user != null){
+            if (user instanceof Student student) {
+                // Remove enrollments for this student
+                List<com.example.Midaxus.model.entities.Enrollment> enrollments = enrollmentRepository.findByStudent_StudentIdAndStatus(student.getStudentId(), com.example.Midaxus.model.enums.EnrollmentStatus.ENROLLED);
+                enrollmentRepository.deleteAll(enrollments);
+                
+                // Fallback by user UUID
+                List<com.example.Midaxus.model.entities.Enrollment> enrollmentsByUuid = enrollmentRepository.findByStudent_StudentIdAndStatus(student.getId(), com.example.Midaxus.model.enums.EnrollmentStatus.ENROLLED);
+                enrollmentRepository.deleteAll(enrollmentsByUuid);
+            } else if (user instanceof Teacher teacher) {
+                // Nullify teacher in course groups
+                List<com.example.Midaxus.model.entities.CourseGroup> groups = courseGroupRepository.findAllByTeacher(teacher);
+                for (com.example.Midaxus.model.entities.CourseGroup group : groups) {
+                    group.setTeacher(null);
+                    courseGroupRepository.save(group);
+                }
+            }
             userRepository.deleteById(s);
         }
     }

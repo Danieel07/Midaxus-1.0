@@ -28,8 +28,14 @@ public class CourseGroup {
     private AcademicPeriod academicPeriod;
     private int capacity;
 
-    @OneToMany(mappedBy = "courseGroup")
+    @OneToMany(mappedBy = "courseGroup", cascade = CascadeType.ALL, orphanRemoval = true)
     private  List<Enrollment>enrollments = new ArrayList<>();
+
+    @OneToMany(mappedBy = "courseGroup", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ScheduleSession> scheduleSessions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "courseGroup", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StudentScheduleSlot> studentScheduleSlots = new ArrayList<>();
 
 
     public CourseGroup(){}

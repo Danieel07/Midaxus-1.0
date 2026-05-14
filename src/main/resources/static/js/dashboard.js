@@ -99,6 +99,11 @@ let pool = [
 let dragSrc    = null;
 let selectedEl = null;
 
+// Global state variables (moved to avoid TDZ)
+let currentScreen = "dashboard";
+let autoRefreshTimer = null;
+let pendingDeleteAction = null;
+
 function decodeJWT(token) {
   try {
     return JSON.parse(atob(token.split('.')[1]));
@@ -177,7 +182,46 @@ function demoSession() {
 
 
 // ─── Navegación ───────────────────────────────────────────────────────────────
+
+// ─── Custom Confirm Modal Logic ───
+function customConfirm(title, message, onConfirm) {
+  const modal = document.getElementById("modal-custom-confirm");
+  const t = document.getElementById("confirm-title");
+  const m = document.getElementById("confirm-message");
+  if (!modal || !t || !m) {
+    if (confirm(`${title}\n\n${message}`)) onConfirm();
+    return;
+  }
+  t.textContent = title;
+  m.textContent = message;
+  pendingDeleteAction = onConfirm;
+  modal.style.display = "flex";
+}
+
+window.closeConfirmModal = () => {
+  document.getElementById("modal-custom-confirm").style.display = "none";
+  pendingDeleteAction = null;
+};
+
+window.executeConfirmAction = () => {
+  if (pendingDeleteAction) pendingDeleteAction();
+  window.closeConfirmModal();
+};
+
+// ─── Auto Refresh Logic ───
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(() => {
+    if (currentScreen === "dashboard") {
+       loadDashboardStats();
+       if (session.role === "STUDENT") loadStudentCourses();
+       if (session.role === "TEACHER") loadTeacherCourses();
+    }
+  }, 10000);
+}
+
 function navigateTo(id) {
+  currentScreen = id;
   document.querySelectorAll(".screen").forEach(s => { s.classList.remove("active"); s.style.display="none"; });
   const tgt = document.getElementById("screen-" + id);
   if (tgt) { tgt.classList.add("active"); tgt.style.display="block"; }
@@ -185,7 +229,7 @@ function navigateTo(id) {
   document.querySelectorAll("#sidebar-menu li").forEach(li => li.classList.toggle("active", li.dataset.id===id));
 
   if (id === "schedule") {
-    const sessionObj = (typeof getSession==="function" ? getSession() : null) || demoSession();
+    const sessionObj = session;
     const editable = ROLES[sessionObj.role]?.scheduleEditable || false;
     buildScheduleUI(editable);
     buildScheduleGrid(editable);
@@ -725,7 +769,7 @@ function renderAdminCourses() {
   tbody.innerHTML = "";
   
   if (adminCoursesData.length === 0) {
-    tbody.innerHTML = DOMPurify.sanitize(`<tr><td colspan="5" style="text-align:center;">No hay sesiones registradas.</td></tr>`);
+    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No hay sesiones registradas.</td></tr>`;
     return;
   }
   
@@ -739,17 +783,54 @@ function renderAdminCourses() {
     const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
     
     const tr = document.createElement("tr");
+    tr.className = "hover:bg-gray-50 transition-colors";
     tr.innerHTML = `
-      <td>${cg.code || "N/A"}</td>
-      <td>${subjName}</td>
-      <td>${teacherName}</td>
-      <td>${cg.capacity || 0}</td>
-      <td>
-        <button class="btn-outline" onclick="openEditSessionModal('${cg.courseGroupId}')"><i class="fas fa-edit"></i> Asignar</button>
+      <td class="p-3 border-b font-mono text-xs text-gray-500">${cg.code || "N/A"}</td>
+      <td class="p-3 border-b font-medium text-gray-800">${subjName}</td>
+      <td class="p-3 border-b text-gray-600">${teacherName}</td>
+      <td class="p-3 border-b text-center"><span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">${cg.capacity || 0}</span></td>
+      <td class="p-3 border-b">
+        <div class="flex items-center gap-3">
+          <button class="text-blue-600 hover:text-blue-800 transition-colors text-sm font-medium flex items-center gap-1" onclick="openEditSessionModal('${cg.courseGroupId}')">
+            <i class="fas fa-edit"></i> Asignar
+          </button>
+          <button class="text-red-500 hover:text-red-700 transition-colors text-sm font-medium flex items-center gap-1" onclick="deleteCourseGroup('${cg.courseGroupId}')">
+            <i class="fas fa-trash"></i> Borrar
+          </button>
+        </div>
       </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+async function deleteCourseGroup(id) {
+  customConfirm(
+    "¿Eliminar grupo de curso?",
+    "Esta acción eliminará permanentemente el grupo, todas sus inscripciones y las sesiones de horario asociadas.",
+    async () => {
+      try {
+        const res = await fetch('/api/course-groups/' + id, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'Bearer ' + rawAuth?.token
+          }
+        });
+        
+        if (res.ok) {
+          toast("Grupo de curso eliminado exitosamente", "success");
+          loadAdminCourses();
+          if (typeof loadAdminSchedule === "function") loadAdminSchedule();
+        } else {
+          const errData = await res.json().catch(() => null);
+          toast(errData?.message || "Error al eliminar el grupo", "error");
+        }
+      } catch(err) {
+        console.error(err);
+        toast("Error de red", "error");
+      }
+    }
+  );
 }
 
 function populateTeacherSelect() {
@@ -759,19 +840,20 @@ function populateTeacherSelect() {
   // Limpiar y dejar el default
   select.innerHTML = '<option value="">Seleccione un profesor...</option>';
   
-  // Filtrar profesores con contrato activo (Few-Shot Pattern: startDate != null o status active)
+  // Filtrar profesores con contrato activo
   let activeTeachers = allTeachersData.filter(t => t.startDate !== null && t.startDate !== undefined);
   
-  // Fallback: Si en la base de datos de prueba ningún profesor tiene startDate, mostramos todos.
+  // Fallback: Si ningún profesor tiene startDate, mostramos todos.
   if (activeTeachers.length === 0) {
       activeTeachers = allTeachersData;
   }
 
   activeTeachers.forEach(t => {
     const opt = document.createElement("option");
-    opt.value = t.teacherId || t.teacherCode;
+    // Usar el ID (UUID) como valor principal para asegurar unicidad
+    opt.value = t.id || t.teacherCode;
     const fullName = (t.firstName || t.userName || "Prof.") + (t.lastName ? " " + t.lastName : "");
-    opt.textContent = fullName;
+    opt.textContent = `${fullName} (${t.teacherCode || 'Sin código'})`;
     select.appendChild(opt);
   });
 }
@@ -823,7 +905,8 @@ async function saveSessionAssignment() {
       closeEditSessionModal();
       loadAdminCourses(); // Refrescar la tabla
     } else {
-      toast("Error al guardar la sesión", "error");
+      const errData = await res.json().catch(() => null);
+      toast(errData?.message || "Error al guardar la sesión", "error");
     }
   } catch(err) {
     console.error(err);
@@ -1168,7 +1251,7 @@ async function saveNewScheduleSession() {
       if (typeof loadAdminSchedule === "function") loadAdminSchedule();
     } else {
       const data = await res.json().catch(() => null);
-      toast(data?.message || "Error al crear el grupo de curso", "error");
+      toast(data?.message || data?.error || "Error al crear el grupo de curso", "error");
     }
   } catch (err) {
     console.error(err);
@@ -2085,7 +2168,6 @@ function generateSlotsFromPolicies() {
   }
 
   STU_SLOTS = slots;
-  console.log('Slots generados:', STU_SLOTS, 'Almuerzo:', LUNCH_SLOT_LABEL);
 }
 
 function validateEntireSchedule() {
@@ -2320,17 +2402,20 @@ async function loadTeacherAttendanceClasses() {
       return;
     }
 
-    list.innerHTML = DOMPurify.sanitize(courses.map(cg => {
+    list.innerHTML = "";
+    courses.forEach(cg => {
       const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
-      return `
-        <button onclick="loadClassStudentsForAttendance('${cg.courseGroupId}', '${subjName}', '${cg.code}')" 
-                class="w-full text-left p-3 rounded-lg border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
-          <div class="font-bold text-gray-800 group-hover:text-indigo-700">${subjName}</div>
-          <div class="text-xs text-gray-500">Grupo ${cg.code} · ${cg.capacity} cupos</div>
-        </button>
+      
+      const btn = document.createElement("button");
+      btn.className = "w-full text-left p-3 rounded-lg border border-gray-100 hover:border-indigo-300 hover:bg-indigo-50 transition-all group";
+      btn.innerHTML = `
+        <div class="font-bold text-gray-800 group-hover:text-indigo-700">${subjName}</div>
+        <div class="text-xs text-gray-500">Grupo ${cg.code} · ${cg.capacity} cupos</div>
       `;
-    }).join(""));
+      btn.onclick = () => loadClassStudentsForAttendance(cg.courseGroupId, subjName, cg.code);
+      list.appendChild(btn);
+    });
 
   } catch (err) {
     console.error(err);
@@ -2428,8 +2513,8 @@ async function loadAdminUsers() {
 
   try {
     const [teachersRes, studentsRes] = await Promise.all([
-      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }),
+      fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' })
     ]);
 
     const teachers = teachersRes.ok ? await teachersRes.json() : [];
@@ -2437,8 +2522,8 @@ async function loadAdminUsers() {
 
     // Consolidar lista
     allUsersCache = [
-      ...teachers.map(t => ({ id: t.teacherCode || t.id, name: `${t.firstName} ${t.lastName}`, email: t.email, role: 'PROFESOR', rawRole: 'TEACHER' })),
-      ...students.map(s => ({ id: s.studentId || s.id, name: `${s.firstName} ${s.lastName}`, email: s.email, role: 'ESTUDIANTE', rawRole: 'STUDENT' }))
+      ...teachers.map(t => ({ id: t.teacherCode || t.id, name: `${t.firstName} ${t.lastName}`, email: t.email, role: 'PROFESOR', rawRole: 'TEACHER', uuid: t.id })),
+      ...students.map(s => ({ id: s.studentId || s.id, name: `${s.firstName} ${s.lastName}`, email: s.email, role: 'ESTUDIANTE', rawRole: 'STUDENT', uuid: s.id }))
     ];
 
     renderAdminUsers(allUsersCache);
@@ -2470,13 +2555,48 @@ function renderAdminUsers(users) {
       </td>
       <td class="p-3 border-b text-gray-400 font-mono text-xs tracking-widest">••••••••</td>
       <td class="p-3 border-b">
-        <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')">
-          <i class="fas fa-user-edit"></i>
-        </button>
+        <div class="flex items-center gap-2">
+          <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')" title="Editar">
+            <i class="fas fa-user-edit"></i>
+          </button>
+          <button class="text-red-500 hover:text-red-700 font-medium text-sm" onclick="deleteAdminUser('${u.uuid}', '${u.name}')" title="Eliminar">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
       </td>
     </tr>
   `).join("");
 }
+
+async function deleteAdminUser(uuid, name) {
+  customConfirm(
+    "¿Eliminar usuario?",
+    `¿Estás seguro de que deseas eliminar permanentemente a "${name}"? Esta acción borrará su cuenta y sus datos asociados.`,
+    async () => {
+      try {
+        const res = await fetch('/api/users/' + uuid, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': 'Bearer ' + rawAuth?.token
+          }
+        });
+        
+        if (res.ok || res.status === 204) {
+          toast(`Usuario "${name}" eliminado exitosamente`, "success");
+          loadAdminUsers();
+        } else {
+          const errData = await res.json().catch(() => null);
+          toast(errData?.message || "Error al eliminar el usuario", "error");
+        }
+      } catch(err) {
+        console.error(err);
+        toast("Error de red", "error");
+      }
+    }
+  );
+}
+
+window.deleteAdminUser = deleteAdminUser;
 
 function filterUsersById() {
   const filterValue = document.getElementById("user-filter-id").value.toLowerCase();

@@ -22,8 +22,11 @@ public class Subject {
     @Column(name = "duration_minutes")
     private int durationMinutes;
 
-    @OneToMany(mappedBy = "subject")
+    @OneToMany(mappedBy = "subject", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CourseGroup> courseGroups = new ArrayList<>();
+
+    @ManyToMany(mappedBy = "habilitatedSubjects")
+    private List<Teacher> teachers = new ArrayList<>();
 
     public Subject() {}
 
