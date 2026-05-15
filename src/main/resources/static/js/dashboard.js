@@ -11,7 +11,6 @@ const ROLES = {
     theme: "from-red-600 to-red-700",
     menu: [
       { id:"dashboard",   icon:"fas fa-tachometer-alt",  label:"Dashboard"   },
-      { id:"schedule",    icon:"fas fa-calendar-check",  label:"Schedule"    },
       { id:"courses",     icon:"fas fa-book",            label:"Gestión de Salones y Clases", desc:"Admin de Salones y Clases", emoji:"🏫" },
       { id:"teachers",    icon:"fas fa-chalkboard-user", label:"Gestión de Usuarios", desc:"Administrar estudiantes y profesores", emoji:"👥" },
       { id:"publication", icon:"fas fa-paper-plane",     label:"Publish"     },
@@ -27,7 +26,6 @@ const ROLES = {
       { label:"Gestión de Usuarios", desc:"Administrar estudiantes y profesores", emoji:"👥", fn: ()=>navigateTo("teachers") },
       { label:"Gestión de Materias", desc:"Catálogo de materias", emoji:"📚", fn: ()=>navigateTo("subjects") },
       { label:"Gestión de Sesiones", desc:"Admin de Salones y Clases", emoji:"🏫", fn: ()=>navigateTo("courses") },
-      { label:"Diseñador de Horarios", desc:"Generar o editar horario manual", emoji:"✨", fn: ()=>navigateTo("schedule") },
       { label:"Configuración", desc:"Límites de Jornada y Almuerzo", emoji:"⚙️", fn: ()=>navigateTo("settings") }
     ],
     showConflictAlert: true,
@@ -270,6 +268,36 @@ function navigateTo(id) {
   window.scrollTo(0,0);
 }
 
+async function loadAvailableCoursesForUnified() {
+  const select = document.getElementById("unified-enroll-select");
+  if (!select) return;
+
+  try {
+    const [coursesRes, subjectsRes] = await Promise.all([
+      fetch('/api/course-groups', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
+      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+    ]);
+
+    if (coursesRes.ok && subjectsRes.ok) {
+      const courses = await coursesRes.json();
+      const allSubj = await subjectsRes.json();
+
+      select.innerHTML = '<option value="">Seleccione una materia...</option>';
+      courses.forEach(cg => {
+        const subj = allSubj.find(s => s.idSubject === cg.subjectId);
+        const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
+        const opt = document.createElement("option");
+        opt.value = cg.courseGroupId;
+        opt.textContent = `${subjName} (Grupo ${cg.code || '—'}) - Cupos: ${cg.capacity}`;
+        select.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    console.error(err);
+    select.innerHTML = '<option value="">Error al cargar</option>';
+  }
+}
+
 // ─── LÓGICA DE MATRÍCULA UNIFICADA (HU-20) ───
 async function saveEnrollmentUnified() {
   const select = document.getElementById("unified-enroll-select");
@@ -285,10 +313,11 @@ async function saveEnrollmentUnified() {
       if (sRes.ok) {
          const students = await sRes.json();
          const me = students.find(s => s.email === session.email);
-         if (me && me.studentId) studentId = me.studentId;
-         else if (me && me.id) studentId = me.id;
+         if (me) {
+            studentId = me.studentId || me.id;
+         }
       }
-  } catch(e) {}
+  } catch(e) { console.warn("Error resolviendo studentId", e); }
 
   const dto = {
     studentId: studentId,
@@ -312,41 +341,13 @@ async function saveEnrollmentUnified() {
       initStudentScheduleBuilder();
     } else {
       const errText = await res.text();
-      toast("Error: " + errText, "error");
+      // Si el error es un string JSON con campo message, extraerlo
+      let msg = errText;
+      try { const obj = JSON.parse(errText); if(obj.message) msg = obj.message; } catch(e){}
+      toast("No se pudo inscribir: " + msg, "error");
     }
   } catch (err) {
-    toast("Error de red", "error");
-  }
-}
-window.saveEnrollmentUnified = saveEnrollmentUnified;
-
-async function loadAvailableCoursesForUnified() {
-  const select = document.getElementById("unified-enroll-select");
-  if (!select) return;
-
-  try {
-    const [coursesRes, subjectsRes] = await Promise.all([
-      fetch('/api/course-groups', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
-    ]);
-
-    if (coursesRes.ok && subjectsRes.ok) {
-      const courses = await coursesRes.json();
-      const allSubj = await subjectsRes.json();
-
-      select.innerHTML = '<option value="">Seleccione una materia...</option>';
-      courses.forEach(cg => {
-        const subj = allSubj.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
-        const subjName = subj ? subj.subjectName : cg.subjectId;
-        const opt = document.createElement("option");
-        opt.value = cg.courseGroupId;
-        opt.textContent = `${subjName} (G${cg.code}) - Cupos: ${cg.capacity}`;
-        select.appendChild(opt);
-      });
-    }
-  } catch (err) {
-    console.error(err);
-    select.innerHTML = '<option value="">Error al cargar</option>';
+    toast("Error de red al inscribir", "error");
   }
 }
 
@@ -779,7 +780,7 @@ function renderAdminCourses() {
     const teacherName = teacher ? ((teacher.firstName || teacher.userName || "Prof.") + (teacher.lastName ? " " + teacher.lastName : "")) : (cg.teacherId || "Sin asignar");
     
     // Buscar nombre de la materia
-    const subj = window.allSubjectsList?.find(s => s.idSubject === cg.code || s.idSubject === cg.subjectId);
+    const subj = window.allSubjectsList?.find(s => s.idSubject === cg.subjectId);
     const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
     
     const tr = document.createElement("tr");
@@ -1059,7 +1060,7 @@ async function loadStudentCourses() {
 
     const htmlContent = courses.map((cg, i) => {
       const c = colors[i % colors.length];
-      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+      const subj = subjects.find(s => s.idSubject === cg.subjectId);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
       const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId);
       const teacherName = teacher ? ((teacher.firstName || teacher.userName || "Prof.") + (teacher.lastName ? " " + teacher.lastName : "")) : "Por asignar";
@@ -1130,7 +1131,7 @@ async function loadTeacherCourses() {
     }
 
     const htmlContent = courses.map((cg, i) => {
-      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+      const subj = subjects.find(s => s.idSubject === cg.subjectId);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
 
       return `
@@ -1209,6 +1210,7 @@ function closeCreateScheduleSessionModal() {
 
 async function saveNewScheduleSession() {
   const subjectId = document.getElementById("create-session-course").value;
+  const groupCode = document.getElementById("create-session-code").value.trim() || "01";
   const teacherId = document.getElementById("create-session-teacher").value;
   const capacity = parseInt(document.getElementById("create-session-capacity").value) || 30;
 
@@ -1226,7 +1228,7 @@ async function saveNewScheduleSession() {
   }
 
   const payload = {
-    code: subjectId,
+    code: groupCode,
     subjectId: subjectId,
     teacherId: teacherId,
     capacity: capacity
@@ -1794,7 +1796,7 @@ async function initStudentScheduleBuilder() {
     if (coursesRes.ok) {
       const courses = await coursesRes.json();
       courses.forEach((cg, i) => {
-        const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+        const subj = subjects.find(s => s.idSubject === cg.subjectId);
         const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherCode === cg.teacherId);
         const sessionsPerWeek = subj ? subj.sessionPerWeek : 2;
 
@@ -1802,7 +1804,8 @@ async function initStudentScheduleBuilder() {
         const duration = subj ? subj.durationMinutes : 120;
         for (let s = 0; s < sessionsPerWeek; s++) {
           studentPool.push({
-            code: cg.code || cg.subjectId,
+            code: cg.subjectId, // Usar subjectId para validaciones de unicidad
+            groupCode: cg.code || "01",
             subjectName: subj ? subj.subjectName : (cg.subjectId || 'Materia'),
             sessionsPerWeek: sessionsPerWeek,
             durationMinutes: duration,
@@ -2404,7 +2407,7 @@ async function loadTeacherAttendanceClasses() {
 
     list.innerHTML = "";
     courses.forEach(cg => {
-      const subj = subjects.find(s => s.idSubject === cg.subjectId || s.idSubject === cg.code);
+      const subj = subjects.find(s => s.idSubject === cg.subjectId);
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
       
       const btn = document.createElement("button");
