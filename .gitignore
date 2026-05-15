@@ -33,3 +33,6 @@ build/
 .vscode/
 ###Docker####
 .env
+
+### Gemini CLI ###
+.gemini/

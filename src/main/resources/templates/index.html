@@ -4,56 +4,178 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Midaxus &mdash; Sistema de Gestión Académica</title>
-    <!-- Tailwind CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body { background-color: #e0f7fa; } /* Soft cyan background */
+        :root {
+            --primary: #3b9a95;
+            --primary-dark: #2d7a73;
+            --primary-light: #e6f3fc;
+            --navy: #1a3a52;
+            --bg-campus: #f8fafb;
+            --surface: #ffffff;
+            --border-academic: #d4e3f0;
+            --text-main: #1a3a52;
+            --text-muted: #7e9eb5;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg-campus);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .logo-wrapper {
+            display: inline-flex;
+            padding: 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border-academic);
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(26, 58, 82, 0.05);
+            margin-bottom: 1.5rem;
+        }
+
+        .logo-img { height: 64px; width: auto; }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin: 0 0 0.5rem 0;
+            color: var(--navy);
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            color: var(--text-muted);
+            max-width: 500px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            max-width: 1100px;
+            width: 100%;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border-academic);
+            border-radius: 20px;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 32px rgba(26, 58, 82, 0.1);
+            border-color: var(--primary);
+        }
+
+        .icon-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover .icon-box { transform: scale(1.1); }
+
+        .card-student .icon-box { background: var(--primary-light); color: var(--primary); }
+        .card-teacher .icon-box { background: #f0f7fa; color: var(--navy); }
+        .card-admin .icon-box { background: #fef2f2; color: #930606; }
+
+        h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 1rem 0;
+            color: var(--navy);
+        }
+
+        p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin: 0 0 2rem 0;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        .card-link {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            h1 { font-size: 2rem; }
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col items-center justify-center p-4">
+<body>
 
-    <!-- Header Logo -->
-    <div class="text-center mb-10 mt-10">
-        <div class="flex justify-center mb-4">
-            <img src="/img/midaxus_icon.png" alt="Logo Midaxus" class="h-20 w-auto bg-white/50 p-3 rounded-2xl shadow-sm" />
+    <header class="header">
+        <div class="logo-wrapper">
+            <img src="/img/midaxus_icon.png" alt="Logo Midaxus" class="logo-img" />
         </div>
-        <h1 class="text-4xl font-bold text-gray-800 mb-2">midaxus</h1>
-        <p class="text-gray-600">Sistema de Gestión Académica - Consulta tus horarios de forma rápida y sencilla</p>
-    </div>
+        <h1>midaxus</h1>
+        <p class="subtitle">Sistema de Gestión Académica. Consulta tus horarios y carga académica con precisión institucional.</p>
+    </header>
 
-    <!-- Cards Container -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl w-full">
+    <div class="grid">
 
-        <!-- Estudiantes Card -->
-        <div class="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center text-center transition-transform hover:-translate-y-1">
-            <div class="bg-blue-100 text-blue-600 p-4 rounded-full w-20 h-20 flex items-center justify-center mb-6">
-                <i class="fas fa-user-graduate text-3xl"></i>
-            </div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-3">Estudiantes</h2>
-            <p class="text-gray-500 mb-6 flex-grow">Accede a tu horario de clases, consulta tus asignaturas y profesores</p>
-            <a href="/login?role=student" class="text-blue-600 font-semibold hover:text-blue-800">Iniciar sesión &rarr;</a>
-        </div>
+        <a href="/login?role=student" class="card card-student">
+            <div class="icon-box"><i class="fas fa-user-graduate"></i></div>
+            <h2>Estudiantes</h2>
+            <p>Accede a tu horario de clases, consulta tus asignaturas y profesores en tiempo real.</p>
+            <span class="card-link">Acceder <i class="fas fa-arrow-right"></i></span>
+        </a>
 
-        <!-- Profesores Card -->
-        <div class="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center text-center transition-transform hover:-translate-y-1">
-            <div class="bg-indigo-100 text-indigo-600 p-4 rounded-full w-20 h-20 flex items-center justify-center mb-6">
-                <i class="fas fa-chalkboard-teacher text-3xl"></i>
-            </div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-3">Profesores</h2>
-            <p class="text-gray-500 mb-6 flex-grow">Revisa tu carga académica, horarios de clases y grupos asignados</p>
-            <a href="/login?role=teacher" class="text-indigo-600 font-semibold hover:text-indigo-800">Iniciar sesión &rarr;</a>
-        </div>
+        <a href="/login?role=teacher" class="card card-teacher">
+            <div class="icon-box"><i class="fas fa-chalkboard-teacher"></i></div>
+            <h2>Profesores</h2>
+            <p>Revisa tu carga académica, gestiona tus grupos y organiza tus sesiones semanales.</p>
+            <span class="card-link">Acceder <i class="fas fa-arrow-right"></i></span>
+        </a>
 
-        <!-- Administrador Card -->
-        <div class="bg-white rounded-xl shadow-lg p-8 flex flex-col items-center text-center transition-transform hover:-translate-y-1">
-            <div class="bg-red-100 text-red-600 p-4 rounded-full w-20 h-20 flex items-center justify-center mb-6">
-                <i class="fas fa-shield-alt text-3xl"></i>
-            </div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-3">Administrador</h2>
-            <p class="text-gray-500 mb-6 flex-grow">Gestiona usuarios, horarios, materias y configuración del sistema</p>
-            <a href="/login?role=admin" class="text-red-600 font-semibold hover:text-red-800">Iniciar sesión &rarr;</a>
-        </div>
+        <a href="/login?role=admin" class="card card-admin">
+            <div class="icon-box"><i class="fas fa-shield-alt"></i></div>
+            <h2>Administrador</h2>
+            <p>Gestión centralizada de usuarios, periodos académicos, materias y políticas del sistema.</p>
+            <span class="card-link">Acceder <i class="fas fa-arrow-right"></i></span>
+        </a>
 
     </div>
 

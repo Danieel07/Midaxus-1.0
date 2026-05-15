@@ -1,10 +1,29 @@
-/* Landing page styles */
-/* Midaxus palette: teal #3b9a95, purple #7C3AED, dark #1E1B2E */
+/* 
+  Midaxus Landing - The Academic Grid 
+  Register: Brand / Product Intro
+*/
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary: #3b9a95;
+  --primary-dark: #2d7a73;
+  --primary-light: #e6f3fc;
+  --navy: #1a3a52;
+  --bg-campus: #f8fafb;
+  --surface: #ffffff;
+  --border-academic: #d4e3f0;
+  --text-main: #1a3a52;
+  --text-muted: #7e9eb5;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
 
 body {
-    color: #1E1B2E;
-    font-family: Arial, sans-serif;
-    background-color: #fafafa;
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    background-color: var(--bg-campus);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
 }
 
 .container {
@@ -15,8 +34,8 @@ body {
 
 /* ── Header ── */
 .site-header {
-    background: white;
-    border-bottom: 1px solid #e0e3e8;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-academic);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -26,163 +45,152 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 0;
+    padding: 1.25rem 0;
 }
 
 .logo-text {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
-    color: #1E1B2E;
+    color: var(--navy);
     text-decoration: none;
+    letter-spacing: -0.02em;
 }
 
 .main-nav a {
-    margin-left: 1rem;
+    margin-left: 1.5rem;
 }
 
 /* ── Buttons ── */
 .btn {
     display: inline-block;
-    padding: 0.6rem 1.4rem;
-    border-radius: 6px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
     font-weight: 600;
     text-decoration: none;
-    transition: background 0.3s, color 0.3s, box-shadow 0.3s;
+    transition: all 0.2s ease;
+    font-size: 0.9375rem;
 }
 
 .btn-primary {
-    background-color: #7C3AED;
+    background-color: var(--primary);
     color: white;
 }
 
 .btn-primary:hover {
-    background-color: #6D28D9;
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.30);
-    opacity: 1;
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 154, 149, 0.2);
 }
 
 .btn-outline {
     background: none;
-    border: 2px solid #7C3AED;
-    color: #7C3AED;
+    border: 1px solid var(--border-academic);
+    color: var(--navy);
 }
 
 .btn-outline:hover {
-    background-color: rgba(124, 58, 237, 0.06);
-    opacity: 1;
+    background-color: var(--primary-light);
+    border-color: var(--primary);
 }
 
 .btn-cta {
-    background-color: #3b9a95;
+    background-color: var(--navy);
     color: white;
-    font-size: 1.1rem;
-    padding: 0.8rem 2.2rem;
-    box-shadow: 0 4px 20px rgba(59, 154, 149, 0.25);
+    font-size: 1rem;
+    padding: 0.875rem 2rem;
 }
 
 .btn-cta:hover {
-    background-color: #2d7a76;
-    box-shadow: 0 6px 24px rgba(59, 154, 149, 0.35);
-    opacity: 1;
+    background-color: #000;
+    transform: translateY(-1px);
 }
 
 /* ── Hero ── */
 .hero {
-    padding: 6rem 0 4rem;
-    background: linear-gradient(135deg, #f3eeff 0%, #e8f8f7 60%, #ffffff 100%);
+    padding: 8rem 0 6rem;
+    background: radial-gradient(circle at top right, var(--primary-light) 0%, var(--bg-campus) 100%);
     text-align: center;
 }
 
 .hero h1 {
-    font-size: 2.6rem;
-    margin-bottom: 1rem;
-    line-height: 1.2;
-    color: #1E1B2E;
+    font-size: 3.5rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.1;
+    color: var(--navy);
+    letter-spacing: -0.04em;
+    font-weight: 800;
 }
 
 .hero h1 span {
-    color: #7C3AED;
+    color: var(--primary);
 }
 
 .hero p {
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
-    max-width: 700px;
+    font-size: 1.25rem;
+    margin-bottom: 3rem;
+    max-width: 600px;
     margin-left: auto;
     margin-right: auto;
-    color: #4b5563;
+    color: var(--text-muted);
 }
 
 /* ── Features ── */
 .features {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     margin: 4rem auto;
     gap: 2rem;
 }
 
 .feature {
-    flex: 1;
-    background: white;
-    padding: 2rem;
-    border-radius: 10px;
-    box-shadow: 0 2px 12px rgba(30, 27, 46, 0.07);
-    text-align: center;
-    border-top: 3px solid transparent;
-    transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s;
+    background: var(--surface);
+    padding: 2.5rem;
+    border-radius: 16px;
+    border: 1px solid var(--border-academic);
+    text-align: left;
+    transition: all 0.3s ease;
 }
 
 .feature:hover {
-    border-color: #7C3AED;
-    box-shadow: 0 6px 24px rgba(124, 58, 237, 0.10);
-    transform: translateY(-3px);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(26, 58, 82, 0.06);
+    border-color: var(--primary);
 }
 
-.feature:nth-child(odd) h3 {
-    color: #7C3AED;
-}
-
-.feature:nth-child(even) h3 {
-    color: #3b9a95;
+.feature h3 {
+    color: var(--navy);
+    font-size: 1.25rem;
+    margin-bottom: 1rem;
+    font-weight: 700;
 }
 
 .feature p {
-    color: #4b5563;
+    color: var(--text-muted);
+    font-size: 0.9375rem;
 }
 
 /* ── Footer ── */
 .site-footer {
-    background: #1E1B2E;
-    border-top: none;
-    padding: 2rem 0;
+    background: var(--navy);
+    padding: 4rem 0;
     text-align: center;
-    font-size: 0.9rem;
-    color: #94A3B8;
+    font-size: 0.875rem;
+    color: rgba(255,255,255,0.6);
 }
 
 .site-footer .footer-nav a {
-    margin: 0 0.5rem;
-    color: #A78BFA;
+    margin: 0 1rem;
+    color: white;
     text-decoration: none;
-    transition: color 0.2s;
+    font-weight: 500;
 }
 
 .site-footer .footer-nav a:hover {
-    color: #7C3AED;
-    text-decoration: underline;
+    color: var(--primary);
 }
 
-/* ── Responsive ── */
 @media (max-width: 768px) {
-    .features {
-        flex-direction: column;
-    }
-
-    .hero h1 {
-        font-size: 2rem;
-    }
-
-    .hero p {
-        font-size: 1rem;
-    }
+    .features { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 2.5rem; }
+    .hero p { font-size: 1.1rem; }
 }

@@ -55,9 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-
       const urlParams = new URLSearchParams(window.location.search);
       const urlRole = urlParams.get('role');
+      
       let expectedRole = 'STUDENT';
       if (urlRole === 'teacher') expectedRole = 'TEACHER';
       else if (urlRole === 'admin') expectedRole = 'ADMIN';
