@@ -2426,7 +2426,13 @@ async function loadTeacherAttendanceClasses() {
   }
 }
 
+let currentAttendanceMap = new Map();
+let currentSelectedCourseGroupId = null;
+
 async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupCode) {
+  currentSelectedCourseGroupId = courseGroupId;
+  currentAttendanceMap.clear();
+
   const container = document.getElementById("attendance-students-container");
   const emptyState = document.getElementById("attendance-empty-state");
   const tableBody = document.getElementById("attendance-students-table-body");
@@ -2436,33 +2442,59 @@ async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupC
   if (!container || !tableBody) return;
 
   title.textContent = `${subjectName} - Grupo ${groupCode}`;
-  dateDisplay.textContent = new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  dateDisplay.textContent = today.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   
   tableBody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-indigo-600 animate-pulse">Cargando lista de estudiantes...</td></tr>';
   if (emptyState) emptyState.style.display = "none";
   container.style.display = "block";
 
   try {
-    const res = await fetch(`/api/enrollments/course/${courseGroupId}/students`, {
-      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
-    });
+    const [studentsRes, attendanceRes] = await Promise.all([
+      fetch(`/api/enrollments/course/${courseGroupId}/students`, {
+        headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+      }),
+      fetch(`/api/attendance/course/${courseGroupId}?date=${dateStr}`, {
+        headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+      })
+    ]);
 
-    if (!res.ok) throw new Error("Error loading students");
-    const students = await res.json();
+    if (!studentsRes.ok) throw new Error("Error loading students");
+    const students = await studentsRes.json();
+    const existingAttendance = attendanceRes.ok ? await attendanceRes.json() : [];
+
+    // Map existing attendance
+    existingAttendance.forEach(a => {
+        currentAttendanceMap.set(a.studentId, a.present);
+    });
 
     if (students.length === 0) {
       tableBody.innerHTML = '<tr><td colspan="3" class="p-10 text-center text-gray-400 italic">No hay estudiantes inscritos en este grupo.</td></tr>';
       return;
     }
 
-    tableBody.innerHTML = students.map(s => `
+    tableBody.innerHTML = students.map(s => {
+      const isPresent = currentAttendanceMap.get(s.studentId);
+      let statusText = "Sin marcar";
+      let statusClass = "bg-gray-100 text-gray-400";
+      
+      if (isPresent === true) {
+          statusText = "Asistencia";
+          statusClass = "bg-green-100 text-green-700";
+      } else if (isPresent === false) {
+          statusText = "Inasistencia";
+          statusClass = "bg-red-100 text-red-700";
+      }
+
+      return `
       <tr class="hover:bg-gray-50 transition-colors" id="row-stu-${s.studentId}">
         <td class="p-3">
           <div class="font-medium text-gray-800">${s.firstName} ${s.lastName}</div>
           <div class="text-xs text-gray-400 font-mono">${s.studentId}</div>
         </td>
         <td class="p-3 text-center">
-          <span id="status-stu-${s.studentId}" class="text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-400">Sin marcar</span>
+          <span id="status-stu-${s.studentId}" class="text-xs font-bold px-2 py-1 rounded-full ${statusClass}">${statusText}</span>
         </td>
         <td class="p-3">
           <div class="flex justify-end gap-2">
@@ -2477,7 +2509,7 @@ async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupC
           </div>
         </td>
       </tr>
-    `).join("");
+    `;}).join("");
 
   } catch (err) {
     console.error(err);
@@ -2487,20 +2519,55 @@ async function loadClassStudentsForAttendance(courseGroupId, subjectName, groupC
 
 function markStudentAttendance(studentId, isPresent) {
   const statusBadge = document.getElementById(`status-stu-${studentId}`);
-  const row = document.getElementById(`row-stu-${studentId}`);
-  
-  if (!statusBadge || !row) return;
+  if (!statusBadge) return;
+
+  currentAttendanceMap.set(studentId, isPresent);
 
   if (isPresent) {
     statusBadge.textContent = "Asistencia";
     statusBadge.className = "text-xs font-bold px-2 py-1 rounded-full bg-green-100 text-green-700";
-    toast("Asistencia marcada para el estudiante", "success");
   } else {
     statusBadge.textContent = "Inasistencia";
     statusBadge.className = "text-xs font-bold px-2 py-1 rounded-full bg-red-100 text-red-700";
-    toast("Inasistencia marcada para el estudiante", "info");
   }
 }
+
+async function saveCurrentAttendance() {
+    if (!currentSelectedCourseGroupId) return;
+    if (currentAttendanceMap.size === 0) {
+        toast("No hay cambios para guardar", "info");
+        return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const payload = Array.from(currentAttendanceMap.entries()).map(([studentId, present]) => ({
+        studentId,
+        courseGroupId: currentSelectedCourseGroupId,
+        date: today,
+        present
+    }));
+
+    try {
+        const res = await fetch('/api/attendance/batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + rawAuth?.token
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            toast("Asistencia guardada permanentemente ✅", "success");
+        } else {
+            toast("Error al guardar asistencia", "error");
+        }
+    } catch (err) {
+        console.error(err);
+        toast("Error de red", "error");
+    }
+}
+window.saveCurrentAttendance = saveCurrentAttendance;
 
 window.loadTeacherAttendanceClasses = loadTeacherAttendanceClasses;
 window.loadClassStudentsForAttendance = loadClassStudentsForAttendance;
