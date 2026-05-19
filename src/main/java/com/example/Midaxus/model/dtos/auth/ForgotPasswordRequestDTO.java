@@ -1,13 +1,54 @@
-package com.example.Midaxus.model.dtos.auth;
+package com.example.midaxus.model.dtos.auth;
 
-public class ForgotPasswordRequestDTO {
-    private String email;
+/**
+ * Data Transfer Object for ForgotPasswordRequestDto.
+ */
+public class ForgotPasswordRequestDto {
+  private String email;
 
-    public String getEmail() {
-        return email;
-    }
+  
+  /**
+   * Constructor for String getEmail.
+   */
+  
+  /**
+   * Gets the Email.
+   */
+  public String getEmail() {
+    return email;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  
+  /**
+   * Constructor for void setEmail.
+   */
+  
+  /**
+   * Sets the Email.
+   */
+  public void setEmail(String email) {
+    this.email = email;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

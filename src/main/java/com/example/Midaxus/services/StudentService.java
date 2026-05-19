@@ -1,51 +1,81 @@
-package com.example.Midaxus.services;
+package com.example.midaxus.services;
 
-import com.example.Midaxus.model.dtos.StudentDTO;
-import com.example.Midaxus.model.entities.Student;
-import com.example.Midaxus.model.entities.Teacher;
-import com.example.Midaxus.model.mapper.StudentMapper;
-import com.example.Midaxus.repositories.StudentRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.midaxus.model.dtos.StudentDto;
+import com.example.midaxus.model.entities.Student;
+import com.example.midaxus.model.mapper.StudentMapper;
+import com.example.midaxus.repositories.StudentRepository;
+import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
+/**
+ * Service implementation for managing students.
+ */
 @Service
-public class StudentService implements IStudent<String, StudentDTO> {
+public class StudentService implements IStudent<String, StudentDto> {
 
-    @Autowired
-    private StudentRepository studentRepository;
+  private final StudentRepository studentRepository;
+  private final PasswordEncoder passwordEncoder;
 
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+  /**
+   * Constructs a StudentService with required dependencies.
+   *
+   * @param studentRepository the repository for students
+   * @param passwordEncoder the encoder for student passwords
+   */
+  public StudentService(StudentRepository studentRepository, PasswordEncoder passwordEncoder) {
+    this.studentRepository = studentRepository;
+    this.passwordEncoder = passwordEncoder;
+  }
 
-    @Override
-    public StudentDTO createStudent(StudentDTO studentDTO) {
-        Student student = StudentMapper.toEntity(studentDTO);
-        if (student.getPassword() != null) {
-            student.setPassword(passwordEncoder.encode(student.getPassword()));
-        }
-        Student saved = studentRepository.save(student);
-        return StudentMapper.toDTO(saved);
+  /**
+   * Creates a new student and encodes their password.
+   *
+   * @param studentDto the DTO containing student data
+   * @return the saved student DTO
+   */
+  @Override
+  public StudentDto createStudent(StudentDto studentDto) {
+    Student student = StudentMapper.toEntity(studentDto);
+    if (student.getPassword() != null) {
+      student.setPassword(passwordEncoder.encode(student.getPassword()));
     }
+    Student saved = studentRepository.save(student);
+    return StudentMapper.toDto(saved);
+  }
 
-    @Override
-    public StudentDTO getStudent(String s) {
-        Student student = studentRepository.getReferenceById(s);
-        return StudentMapper.toDTO(student);
+  /**
+   * Retrieves a student by their ID.
+   *
+   * @param s the ID of the student to retrieve
+   * @return the student DTO
+   */
+  @Override
+  public StudentDto getStudent(String s) {
+    Student student = studentRepository.getReferenceById(s);
+    return StudentMapper.toDto(student);
+  }
 
-    }
+  /**
+   * Deletes a student.
+   *
+   * @param studentDto the DTO of the student to delete
+   */
+  @Override
+  public void deleteStudent(StudentDto studentDto) {
+    studentRepository.delete(StudentMapper.toEntity(studentDto));
+  }
 
-    @Override
-    public void deleteStudent(StudentDTO studentDTO) {
-        studentRepository.delete(StudentMapper.toEntity(studentDTO));
-
-    }
-
-    @Override
-    public List<StudentDTO> getStudents() {
-
-        return studentRepository.findAll().stream().map(StudentMapper::toDTO).toList();
-    }
+  /**
+   * Retrieves all students.
+   *
+   * @return a list of student DTOs
+   */
+  @Override
+  public List<StudentDto> getStudents() {
+    return studentRepository.findAll().stream()
+        .map(StudentMapper::toDto)
+        .toList();
+  }
 }
+

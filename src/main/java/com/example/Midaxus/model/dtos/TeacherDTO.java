@@ -1,112 +1,301 @@
-package com.example.Midaxus.model.dtos;
+package com.example.midaxus.model.dtos;
 
 import java.util.Date;
 import java.util.List;
 
-public class TeacherDTO {
+/**
+ * Data Transfer Object for TeacherDto.
+ */
+public class TeacherDto {
 
-    private String id;
-    private String teacherCode;
-    private String userName;
-    private Date startDate;
-    private List<String> subjectsIds;
-    private List<TeacherAvailabilityDTO> availabilities;
-    private String firstName;
-    private String lastName;
-    private String password;
-    private String email;
+  private String id;
+  private String teacherCode;
+  private String userName;
+  private Date startDate;
+  private List<String> subjectsIds;
+  private List<TeacherAvailabilityDto> availabilities;
+  private String firstName;
+  private String lastName;
+  private String password;
+  private String email;
 
-    public TeacherDTO() {}
+  
+  /**
+   * Constructor for TeacherDto.
+   */
+  public TeacherDto() {}
 
-    public TeacherDTO(String id, String teacherCode, String userName,
-                      String firstName, String lastName, String email,
-                      String password) {
-        this.id = id;
-        this.teacherCode = teacherCode;
-        this.userName = userName;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.email = email;
-        this.password = password;
-    }
+  public TeacherDto(String id, String teacherCode, String userName,
+      String firstName, String lastName, String email,
+      String password) {
+    this.id = id;
+    this.teacherCode = teacherCode;
+    this.userName = userName;
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.email = email;
+    this.password = password;
+  }
 
-    public String getId() {
-        return id;
-    }
+  
+  /**
+   * Constructor for String getId.
+   */
+  
+  /**
+   * Gets the Id.
+   */
+  public String getId() {
+    return id;
+  }
 
-    public void setId(String id) {
-        this.id = id;
-    }
+  
+  /**
+   * Constructor for void setId.
+   */
+  
+  /**
+   * Sets the Id.
+   */
+  public void setId(String id) {
+    this.id = id;
+  }
 
-    public String getTeacherCode() {
-        return teacherCode;
-    }
+  
+  /**
+   * Constructor for String getTeacherCode.
+   */
+  
+  /**
+   * Gets the TeacherCode.
+   */
+  public String getTeacherCode() {
+    return teacherCode;
+  }
 
-    public void setTeacherCode(String teacherCode) {
-        this.teacherCode = teacherCode;
-    }
+  
+  /**
+   * Constructor for void setTeacherCode.
+   */
+  
+  /**
+   * Sets the TeacherCode.
+   */
+  public void setTeacherCode(String teacherCode) {
+    this.teacherCode = teacherCode;
+  }
 
-    public String getUserName() {
-        return userName;
-    }
+  
+  /**
+   * Constructor for String getUserName.
+   */
+  
+  /**
+   * Gets the UserName.
+   */
+  public String getUserName() {
+    return userName;
+  }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
+  
+  /**
+   * Constructor for void setUserName.
+   */
+  
+  /**
+   * Sets the UserName.
+   */
+  public void setUserName(String userName) {
+    this.userName = userName;
+  }
 
-    public Date getStartDate() {
-        return startDate;
-    }
+  
+  /**
+   * Constructor for Date getStartDate.
+   */
+  
+  /**
+   * Gets the StartDate.
+   */
+  public Date getStartDate() {
+    return startDate;
+  }
 
-    public void setStartDate(Date startDate) {
-        this.startDate = startDate;
-    }
+  
+  /**
+   * Constructor for void setStartDate.
+   */
+  
+  /**
+   * Sets the StartDate.
+   */
+  public void setStartDate(Date startDate) {
+    this.startDate = startDate;
+  }
 
-    public List<String> getSubjectsIds() {
-        return subjectsIds;
-    }
+  
+  /**
+   * Constructor for List<String> getSubjectsIds.
+   */
+  
+  /**
+   * Gets the SubjectsIds.
+   */
+  public List<String> getSubjectsIds() {
+    return subjectsIds;
+  }
 
-    public void setSubjectsIds(List<String> subjectsIds) {
-        this.subjectsIds = subjectsIds;
-    }
+  
+  /**
+   * Constructor for void setSubjectsIds.
+   */
+  
+  /**
+   * Sets the SubjectsIds.
+   */
+  public void setSubjectsIds(List<String> subjectsIds) {
+    this.subjectsIds = subjectsIds;
+  }
 
-    public List<TeacherAvailabilityDTO> getAvailabilities() {
-        return availabilities;
-    }
+  
+  /**
+   * Constructor for List<TeacherAvailabilityDto> getAvailabilities.
+   */
+  
+  /**
+   * Gets the Availabilities.
+   */
+  public List<TeacherAvailabilityDto> getAvailabilities() {
+    return availabilities;
+  }
 
-    public void setAvailabilities(List<TeacherAvailabilityDTO> availabilities) {
-        this.availabilities = availabilities;
-    }
+  
+  /**
+   * Constructor for void setAvailabilities.
+   */
+  
+  /**
+   * Sets the Availabilities.
+   */
+  public void setAvailabilities(List<TeacherAvailabilityDto> availabilities) {
+    this.availabilities = availabilities;
+  }
 
-    public String getFirstName() {
-        return firstName;
-    }
+  
+  /**
+   * Constructor for String getFirstName.
+   */
+  
+  /**
+   * Gets the FirstName.
+   */
+  public String getFirstName() {
+    return firstName;
+  }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
+  
+  /**
+   * Constructor for void setFirstName.
+   */
+  
+  /**
+   * Sets the FirstName.
+   */
+  public void setFirstName(String firstName) {
+    this.firstName = firstName;
+  }
 
-    public String getLastName() {
-        return lastName;
-    }
+  
+  /**
+   * Constructor for String getLastName.
+   */
+  
+  /**
+   * Gets the LastName.
+   */
+  public String getLastName() {
+    return lastName;
+  }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
+  
+  /**
+   * Constructor for void setLastName.
+   */
+  
+  /**
+   * Sets the LastName.
+   */
+  public void setLastName(String lastName) {
+    this.lastName = lastName;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  
+  /**
+   * Constructor for String getEmail.
+   */
+  
+  /**
+   * Gets the Email.
+   */
+  public String getEmail() {
+    return email;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  
+  /**
+   * Constructor for void setEmail.
+   */
+  
+  /**
+   * Sets the Email.
+   */
+  public void setEmail(String email) {
+    this.email = email;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  
+  /**
+   * Constructor for String getPassword.
+   */
+  
+  /**
+   * Gets the Password.
+   */
+  public String getPassword() {
+    return password;
+  }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  
+  /**
+   * Constructor for void setPassword.
+   */
+  
+  /**
+   * Sets the Password.
+   */
+  public void setPassword(String password) {
+    this.password = password;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

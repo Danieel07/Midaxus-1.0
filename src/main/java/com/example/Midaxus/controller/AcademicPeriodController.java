@@ -1,54 +1,75 @@
-package com.example.Midaxus.controller;
+package com.example.midaxus.controller;
 
-import com.example.Midaxus.model.dtos.AcademicPeriodDTO;
-import com.example.Midaxus.services.AcademicPeriodService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
+import com.example.midaxus.model.dtos.AcademicPeriodDto;
+import com.example.midaxus.services.AcademicPeriodService;
 import java.net.URI;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST Controller for AcademicPeriodController.
+ */
 @RestController
 @RequestMapping("/api/academic-periods")
 public class AcademicPeriodController {
 
-    @Autowired
-    private AcademicPeriodService service;
+  @Autowired
+  private AcademicPeriodService service;
 
-    // 🔹 CREATE
-    @PostMapping
-    public ResponseEntity<AcademicPeriodDTO> create(@RequestBody AcademicPeriodDTO dto) {
+  /**
+   * Creates a new academic period.
+   *
+   * @param dto the academic period data transfer object.
+   * @return the response entity with the created academic period.
+   */
+  @PostMapping
+  public ResponseEntity<AcademicPeriodDto> create(@RequestBody AcademicPeriodDto dto) {
+    AcademicPeriodDto created = service.create(dto);
+    return ResponseEntity
+        .created(URI.create("/api/academic-periods/" + created.getPeriodId()))
+        .body(created);
+  }
 
-        AcademicPeriodDTO created = service.create(dto);
+  /**
+   * Gets an academic period by its ID.
+   *
+   * @param id the ID of the academic period.
+   * @return the response entity with the academic period.
+   */
+  @GetMapping("/{id}")
+  public ResponseEntity<AcademicPeriodDto> getById(@PathVariable String id) {
+    AcademicPeriodDto result = service.getById(id);
+    return ResponseEntity.ok(result);
+  }
 
-        return ResponseEntity
-                .created(URI.create("/api/academic-periods/" + created.getPeriodId()))
-                .body(created);
-    }
+  /**
+   * Gets all academic periods.
+   *
+   * @return the response entity with the list of all academic periods.
+   */
+  @GetMapping
+  public ResponseEntity<List<AcademicPeriodDto>> getAll() {
+    return ResponseEntity.ok(service.getAll());
+  }
 
-    // 🔹 GET BY ID
-    @GetMapping("/{id}")
-    public ResponseEntity<AcademicPeriodDTO> getById(@PathVariable String id) {
-
-        AcademicPeriodDTO result = service.getById(id);
-
-        return ResponseEntity.ok(result);
-    }
-
-    // 🔹 GET ALL
-    @GetMapping
-    public ResponseEntity<List<AcademicPeriodDTO>> getAll() {
-
-        return ResponseEntity.ok(service.getAll());
-    }
-
-    // 🔹 DELETE
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-
-        service.delete(id);
-
-        return ResponseEntity.noContent().build();
-    }
+  /**
+   * Deletes an academic period by its ID.
+   *
+   * @param id the ID of the academic period to delete.
+   * @return the response entity with no content.
+   */
+  @DeleteMapping("/{id}")
+  public ResponseEntity<Void> delete(@PathVariable String id) {
+    service.delete(id);
+    return ResponseEntity.noContent().build();
+  }
 }
+

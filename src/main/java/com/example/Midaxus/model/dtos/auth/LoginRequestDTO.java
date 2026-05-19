@@ -1,31 +1,104 @@
-package com.example.Midaxus.model.dtos.auth;
+package com.example.midaxus.model.dtos.auth;
 
-public class LoginRequestDTO {
-    private String email;
-    private String password;
-    private String expectedRole;
+/**
+ * Data Transfer Object for LoginRequestDto.
+ */
+public class LoginRequestDto {
+  private String email;
+  private String password;
+  private String expectedRole;
 
-    public String getEmail() {
-        return email;
-    }
+  
+  /**
+   * Constructor for String getEmail.
+   */
+  
+  /**
+   * Gets the Email.
+   */
+  public String getEmail() {
+    return email;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  
+  /**
+   * Constructor for void setEmail.
+   */
+  
+  /**
+   * Sets the Email.
+   */
+  public void setEmail(String email) {
+    this.email = email;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  
+  /**
+   * Constructor for String getPassword.
+   */
+  
+  /**
+   * Gets the Password.
+   */
+  public String getPassword() {
+    return password;
+  }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  
+  /**
+   * Constructor for void setPassword.
+   */
+  
+  /**
+   * Sets the Password.
+   */
+  public void setPassword(String password) {
+    this.password = password;
+  }
 
-    public String getExpectedRole() {
-        return expectedRole;
-    }
+  
+  /**
+   * Constructor for String getExpectedRole.
+   */
+  
+  /**
+   * Gets the ExpectedRole.
+   */
+  public String getExpectedRole() {
+    return expectedRole;
+  }
 
-    public void setExpectedRole(String expectedRole) {
-        this.expectedRole = expectedRole;
-    }
+  
+  /**
+   * Constructor for void setExpectedRole.
+   */
+  
+  /**
+   * Sets the ExpectedRole.
+   */
+  public void setExpectedRole(String expectedRole) {
+    this.expectedRole = expectedRole;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

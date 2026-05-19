@@ -1,5 +1,5 @@
 
-package com.example.Midaxus.model.entities;
+package com.example.midaxus.model.entities;
 
 import jakarta.persistence.*;
 
@@ -11,114 +11,136 @@ import java.util.Date;
 @DiscriminatorColumn(name = "dtype")
 public abstract class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private String id;
 
-    private String userName;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private String password;
+  private String userName;
+  private String firstName;
+  private String lastName;
+  private String email;
+  private String password;
 
-    private String resetToken;
-    private Date resetTokenExpiration;
-
-
-    @Temporal(TemporalType.DATE)
-    private Date signInDate;
+  private String resetToken;
+  private Date resetTokenExpiration;
 
 
-    public User() {}
+  @Temporal(TemporalType.DATE)
+  private Date signInDate;
 
-    public User(String userName, String lastName){
-        this.userName = userName;
-        this.lastName = lastName;
-    }
 
-    public User(String userName, String firstName, String lastName,
-                String id, String email, String password,
-                Date signInDate) {
+  public User() {}
 
-        this.userName = userName;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.id = id;
-        this.email = email;
-        this.password = password;
-        this.signInDate = signInDate;
+  public User(String userName, String lastName){
+    this.userName = userName;
+    this.lastName = lastName;
+  }
 
-    }
+  public User(String userName, String firstName, String lastName,
+      String id, String email, String password,
+      Date signInDate) {
 
-    public String getId() {
-        return id;
-    }
+    this.userName = userName;
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.id = id;
+    this.email = email;
+    this.password = password;
+    this.signInDate = signInDate;
 
-    public void setId(String id) {
-        this.id = id;
-    }
+  }
 
-    public String getUserName() {
-        return userName;
-    }
+  public String getId() {
+    return id;
+  }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
+  public void setId(String id) {
+    this.id = id;
+  }
 
-    public String getFirstName() {
-        return firstName;
-    }
+  public String getUserName() {
+    return userName;
+  }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
+  public void setUserName(String userName) {
+    this.userName = userName;
+  }
 
-    public String getLastName() {
-        return lastName;
-    }
+  public String getFirstName() {
+    return firstName;
+  }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
+  public void setFirstName(String firstName) {
+    this.firstName = firstName;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  public String getLastName() {
+    return lastName;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  public void setLastName(String lastName) {
+    this.lastName = lastName;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  public String getEmail() {
+    return email;
+  }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  public void setEmail(String email) {
+    this.email = email;
+  }
 
-    public String getResetToken() {
-        return resetToken;
-    }
+  public String getPassword() {
+    return password;
+  }
 
-    public void setResetToken(String resetToken) {
-        this.resetToken = resetToken;
-    }
+  public void setPassword(String password) {
+    this.password = password;
+  }
 
-    public Date getResetTokenExpiration() {
-        return resetTokenExpiration;
-    }
+  public String getResetToken() {
+    return resetToken;
+  }
 
-    public void setResetTokenExpiration(Date resetTokenExpiration) {
-        this.resetTokenExpiration = resetTokenExpiration;
-    }
+  public void setResetToken(String resetToken) {
+    this.resetToken = resetToken;
+  }
 
-    public Date getSignInDate() {
-        return signInDate;
-    }
+  public Date getResetTokenExpiration() {
+    return resetTokenExpiration;
+  }
 
-    public void setSignInDate(Date signInDate) {
-        this.signInDate = signInDate;
-    }
+  public void setResetTokenExpiration(Date resetTokenExpiration) {
+    this.resetTokenExpiration = resetTokenExpiration;
+  }
+
+  public Date getSignInDate() {
+    return signInDate;
+  }
+
+  public void setSignInDate(Date signInDate) {
+    this.signInDate = signInDate;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

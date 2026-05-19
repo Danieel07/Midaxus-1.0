@@ -1,4 +1,29 @@
-package com.example.Midaxus.model.dtos;
+package com.example.midaxus.model.dtos;
 
-public class VinculationSlotDTO {
+/**
+ * Data Transfer Object for VinculationSlotDto.
+ */
+public class VinculationSlotDto {
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

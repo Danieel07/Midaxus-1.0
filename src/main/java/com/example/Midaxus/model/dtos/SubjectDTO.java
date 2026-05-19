@@ -1,49 +1,142 @@
-package com.example.Midaxus.model.dtos;
+package com.example.midaxus.model.dtos;
 
-public class SubjectDTO {
+/**
+ * Data Transfer Object for SubjectDto.
+ */
+public class SubjectDto {
 
-    private String idSubject;
-    private String subjectName;
-    private int sessionPerWeek;
-    private int durationMinutes;
+  private String idSubject;
+  private String subjectName;
+  private int sessionPerWeek;
+  private int durationMinutes;
 
 
-    public SubjectDTO(String idSubject, String subjectName, int sessionPerWeek, int durationMinutes) {
-        this.idSubject = idSubject;
-        this.subjectName = subjectName;
-        this.sessionPerWeek = sessionPerWeek;
-        this.durationMinutes = durationMinutes;
-    }
+  
+  /**
+   * Constructor for SubjectDto.
+   */
+  public SubjectDto(String idSubject, String subjectName, int sessionPerWeek, int durationMinutes) {
+    this.idSubject = idSubject;
+    this.subjectName = subjectName;
+    this.sessionPerWeek = sessionPerWeek;
+    this.durationMinutes = durationMinutes;
+  }
 
-    public String getIdSubject() {
-        return idSubject;
-    }
+  
+  /**
+   * Constructor for String getIdSubject.
+   */
+  
+  /**
+   * Gets the IdSubject.
+   */
+  public String getIdSubject() {
+    return idSubject;
+  }
 
-    public void setIdSubject(String idSubject) {
-        this.idSubject = idSubject;
-    }
+  
+  /**
+   * Constructor for void setIdSubject.
+   */
+  
+  /**
+   * Sets the IdSubject.
+   */
+  public void setIdSubject(String idSubject) {
+    this.idSubject = idSubject;
+  }
 
-    public String getSubjectName() {
-        return subjectName;
-    }
+  
+  /**
+   * Constructor for String getSubjectName.
+   */
+  
+  /**
+   * Gets the SubjectName.
+   */
+  public String getSubjectName() {
+    return subjectName;
+  }
 
-    public void setSubjectName(String subjectName) {
-        this.subjectName = subjectName;
-    }
+  
+  /**
+   * Constructor for void setSubjectName.
+   */
+  
+  /**
+   * Sets the SubjectName.
+   */
+  public void setSubjectName(String subjectName) {
+    this.subjectName = subjectName;
+  }
 
-    public int getSessionPerWeek() {
-        return sessionPerWeek;
-    }
+  
+  /**
+   * Constructor for int getSessionPerWeek.
+   */
+  
+  /**
+   * Gets the SessionPerWeek.
+   */
+  public int getSessionPerWeek() {
+    return sessionPerWeek;
+  }
 
-    public void setSessionPerWeek(int sessionPerWeek) {
-        this.sessionPerWeek = sessionPerWeek;
-    }
+  
+  /**
+   * Constructor for void setSessionPerWeek.
+   */
+  
+  /**
+   * Sets the SessionPerWeek.
+   */
+  public void setSessionPerWeek(int sessionPerWeek) {
+    this.sessionPerWeek = sessionPerWeek;
+  }
 
-    public int getDurationMinutes() {
-        return durationMinutes;
-    }
+  
+  /**
+   * Constructor for int getDurationMinutes.
+   */
+  
+  /**
+   * Gets the DurationMinutes.
+   */
+  public int getDurationMinutes() {
+    return durationMinutes;
+  }
 
-    public void setDurationMinutes(int durationMinutes) {
-        this.durationMinutes = durationMinutes;
-    }
+  
+  /**
+   * Constructor for void setDurationMinutes.
+   */
+  
+  /**
+   * Sets the DurationMinutes.
+   */
+  public void setDurationMinutes(int durationMinutes) {
+    this.durationMinutes = durationMinutes;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
