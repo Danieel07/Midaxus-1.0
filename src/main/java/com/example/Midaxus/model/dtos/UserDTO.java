@@ -1,101 +1,270 @@
-package com.example.Midaxus.model.dtos;
+package com.example.midaxus.model.dtos;
 
-public class UserDTO {
+/**
+ * Data Transfer Object for UserDto.
+ */
+public class UserDto {
 
-    private String userType;
-    private String teacherCode;
-    private String studentId;
-    private String adminId;
-    private String userName;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private String password;
+  private String userType;
+  private String teacherCode;
+  private String studentId;
+  private String adminId;
+  private String userName;
+  private String firstName;
+  private String lastName;
+  private String email;
+  private String password;
 
-    public UserDTO(){}
+  public UserDto(){}
 
-    public UserDTO(String userType,String teacherCode,String studentId, String adminId, String userName, String firstName,
-                   String lastName, String email, String password) {
-        this.userType = userType;
-        this.teacherCode = teacherCode;
-        this.studentId = studentId;
-        this.adminId = adminId;
-        this.userName = userName;
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.email = email;
-        this.password = password;
-    }
+  public UserDto(String userType,String teacherCode,String studentId, String adminId, String userName, String firstName,
+     String lastName, String email, String password) {
+    this.userType = userType;
+    this.teacherCode = teacherCode;
+    this.studentId = studentId;
+    this.adminId = adminId;
+    this.userName = userName;
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.email = email;
+    this.password = password;
+  }
 
-    public String getAdminId() {
-        return adminId;
-    }
+  
+  /**
+   * Constructor for String getAdminId.
+   */
+  
+  /**
+   * Gets the AdminId.
+   */
+  public String getAdminId() {
+    return adminId;
+  }
 
-    public void setAdminId(String adminId) {
-        this.adminId = adminId;
-    }
+  
+  /**
+   * Constructor for void setAdminId.
+   */
+  
+  /**
+   * Sets the AdminId.
+   */
+  public void setAdminId(String adminId) {
+    this.adminId = adminId;
+  }
 
-    public String getUserType() {
-        return userType;
-    }
+  
+  /**
+   * Constructor for String getUserType.
+   */
+  
+  /**
+   * Gets the UserType.
+   */
+  public String getUserType() {
+    return userType;
+  }
 
-    public void setUserType(String userType) {
-        this.userType = userType;
-    }
+  
+  /**
+   * Constructor for void setUserType.
+   */
+  
+  /**
+   * Sets the UserType.
+   */
+  public void setUserType(String userType) {
+    this.userType = userType;
+  }
 
-    public String getUserName() {
-        return userName;
-    }
+  
+  /**
+   * Constructor for String getUserName.
+   */
+  
+  /**
+   * Gets the UserName.
+   */
+  public String getUserName() {
+    return userName;
+  }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
+  
+  /**
+   * Constructor for void setUserName.
+   */
+  
+  /**
+   * Sets the UserName.
+   */
+  public void setUserName(String userName) {
+    this.userName = userName;
+  }
 
-    public String getTeacherCode() {
-        return teacherCode;
-    }
+  
+  /**
+   * Constructor for String getTeacherCode.
+   */
+  
+  /**
+   * Gets the TeacherCode.
+   */
+  public String getTeacherCode() {
+    return teacherCode;
+  }
 
-    public void setTeacherCode(String teacherCode) {
-        this.teacherCode = teacherCode;
-    }
+  
+  /**
+   * Constructor for void setTeacherCode.
+   */
+  
+  /**
+   * Sets the TeacherCode.
+   */
+  public void setTeacherCode(String teacherCode) {
+    this.teacherCode = teacherCode;
+  }
 
-    public String getStudentId() {
-        return studentId;
-    }
+  
+  /**
+   * Constructor for String getStudentId.
+   */
+  
+  /**
+   * Gets the StudentId.
+   */
+  public String getStudentId() {
+    return studentId;
+  }
 
-    public void setStudentId(String studentId) {
-        this.studentId = studentId;
-    }
+  
+  /**
+   * Constructor for void setStudentId.
+   */
+  
+  /**
+   * Sets the StudentId.
+   */
+  public void setStudentId(String studentId) {
+    this.studentId = studentId;
+  }
 
-    public String getFirstName() {
-        return firstName;
-    }
+  
+  /**
+   * Constructor for String getFirstName.
+   */
+  
+  /**
+   * Gets the FirstName.
+   */
+  public String getFirstName() {
+    return firstName;
+  }
 
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
+  
+  /**
+   * Constructor for void setFirstName.
+   */
+  
+  /**
+   * Sets the FirstName.
+   */
+  public void setFirstName(String firstName) {
+    this.firstName = firstName;
+  }
 
-    public String getLastName() {
-        return lastName;
-    }
+  
+  /**
+   * Constructor for String getLastName.
+   */
+  
+  /**
+   * Gets the LastName.
+   */
+  public String getLastName() {
+    return lastName;
+  }
 
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
+  
+  /**
+   * Constructor for void setLastName.
+   */
+  
+  /**
+   * Sets the LastName.
+   */
+  public void setLastName(String lastName) {
+    this.lastName = lastName;
+  }
 
-    public String getEmail() {
-        return email;
-    }
+  
+  /**
+   * Constructor for String getEmail.
+   */
+  
+  /**
+   * Gets the Email.
+   */
+  public String getEmail() {
+    return email;
+  }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+  
+  /**
+   * Constructor for void setEmail.
+   */
+  
+  /**
+   * Sets the Email.
+   */
+  public void setEmail(String email) {
+    this.email = email;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  
+  /**
+   * Constructor for String getPassword.
+   */
+  
+  /**
+   * Gets the Password.
+   */
+  public String getPassword() {
+    return password;
+  }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  
+  /**
+   * Constructor for void setPassword.
+   */
+  
+  /**
+   * Sets the Password.
+   */
+  public void setPassword(String password) {
+    this.password = password;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

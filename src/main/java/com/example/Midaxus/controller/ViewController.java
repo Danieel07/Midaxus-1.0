@@ -1,38 +1,72 @@
-package com.example.Midaxus.controller;
+package com.example.midaxus.controller;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 
+/**
+ * Controller for managing web views.
+ */
 @Controller
 public class ViewController {
 
-    @GetMapping("/")
-    public String index() {
-        return "index"; // Esto resuelve a src/main/resources/templates/index.html gracias a Thymeleaf
-    }
+  /**
+   * Renders the index page.
+   *
+   * @return the name of the index template
+   */
+  @GetMapping("/")
+  public String index() {
+    return "index";
+  }
 
-    @GetMapping("/login")
-    public String login() {
-        return "login";
-    }
+  /**
+   * Renders the login page.
+   *
+   * @return the name of the login template
+   */
+  @GetMapping("/login")
+  public String login() {
+    return "login";
+  }
 
-    @GetMapping("/register")
-    public String register() {
-        return "register";
-    }
+  /**
+   * Renders the registration page.
+   *
+   * @return the name of the register template
+   */
+  @GetMapping("/register")
+  public String register() {
+    return "register";
+  }
 
-    @GetMapping("/dashboard")
-    public String dashboard() {
-        return "dashboard";
-    }
+  /**
+   * Renders the dashboard page.
+   *
+   * @return the name of the dashboard template
+   */
+  @GetMapping("/dashboard")
+  public String dashboard() {
+    return "dashboard";
+  }
 
-    @GetMapping("/forgotpassword")
-    public String forgotpassword() {
-        return "forgotpassword";
-    }
+  /**
+   * Renders the forgot password page.
+   *
+   * @return the name of the forgotpassword template
+   */
+  @GetMapping("/forgotpassword")
+  public String forgotpassword() {
+    return "forgotpassword";
+  }
 
-    @GetMapping("/reset-password")
-    public String resetPassword() {
-        return "reset-password";
-    }
+  /**
+   * Renders the reset password page.
+   *
+   * @return the name of the reset-password template
+   */
+  @GetMapping("/reset-password")
+  public String resetPassword() {
+    return "reset-password";
+  }
 }
+

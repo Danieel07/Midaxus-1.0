@@ -1,48 +1,76 @@
-package com.example.Midaxus.model.mapper;
+package com.example.midaxus.model.mapper;
 
-import com.example.Midaxus.model.dtos.CourseGroupDTO;
-import com.example.Midaxus.model.entities.CourseGroup;
+import com.example.midaxus.model.dtos.CourseGroupDto;
+import com.example.midaxus.model.entities.CourseGroup;
 
 import java.util.List;
 
 public class CourseGroupMapper {
 
 
-    public static CourseGroupDTO toDTO(CourseGroup entity) {
+  public static CourseGroupDto toDto(CourseGroup entity) {
 
-        if (entity == null) return null;
+    if (entity == null) {
+  return null;
+  }
 
-        return new CourseGroupDTO(
-                entity.getCourseGroupId(),
-                entity.getTeacher() != null ? entity.getTeacher().getId() : null,
-                entity.getSubject() != null ? entity.getSubject().getIdSubject() : null,
-                entity.getAcademicPeriod() != null ? entity.getAcademicPeriod().getPeriodId() : null,
-                entity.getCode(),
-                entity.getCapacity()
-        );
-    }
-
-
-    public static CourseGroup toEntity(CourseGroupDTO dto) {
-
-        if (dto == null) return null;
-
-        CourseGroup entity = new CourseGroup();
-
-        entity.setCourseGroupId(dto.getCourseGroupId());
-        entity.setCode(dto.getCode());
-        entity.setCapacity(dto.getCapacity());
-
-        return entity;
-    }
+    return new CourseGroupDto(
+      entity.getCourseGroupId(),
+      entity.getTeacher() != null ? entity.getTeacher().getId() : null,
+      entity.getSubject() != null ? entity.getSubject().getIdSubject() : null,
+      entity.getAcademicPeriod() != null ? entity.getAcademicPeriod().getPeriodId() : null,
+      entity.getCode(),
+      entity.getCapacity()
+    );
+  }
 
 
-    public static List<CourseGroupDTO> toDTOList(List<CourseGroup> list) {
+  public static CourseGroup toEntity(CourseGroupDto dto) {
 
-        if (list == null) return List.of();
+    if (dto == null) {
+  return null;
+  }
 
-        return list.stream()
-                .map(CourseGroupMapper::toDTO)
-                .toList();
-    }
+    CourseGroup entity = new CourseGroup();
+
+    entity.setCourseGroupId(dto.getCourseGroupId());
+    entity.setCode(dto.getCode());
+    entity.setCapacity(dto.getCapacity());
+
+    return entity;
+  }
+
+
+  public static List<CourseGroupDto> toDtoList(List<CourseGroup> list) {
+
+    if (list == null) {
+  return List.of();
+  }
+
+    return list.stream()
+      .map(CourseGroupMapper::toDto)
+      .toList();
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

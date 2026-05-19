@@ -1,88 +1,111 @@
-package com.example.Midaxus.model.entities;
-
+package com.example.midaxus.model.entities;
 
 import jakarta.persistence.*;
 
 import java.util.Date;
 import java.util.List;
 
-
 @Entity
 @Table(name = "teacher")
 @DiscriminatorValue("TEACHER")
+/**
+ * Entity class for Teacher extends User.
+ */
 public class Teacher extends User {
 
-    @Column(unique = true)
-    private String teacherCode;
+  @Column(unique = true)
+  private String teacherCode;
 
-    @Temporal(TemporalType.DATE)
-    private Date startDate;
+  @Temporal(TemporalType.DATE)
+  private Date startDate;
 
-    @OneToMany(mappedBy = "teacher")
-    private List<CourseGroup> courseGroups;
+  @OneToMany(mappedBy = "teacher")
+  private List<CourseGroup> courseGroups;
 
-    @ManyToMany
-    @JoinTable(
-        name = "teacher_subjects",
-        joinColumns = @JoinColumn(name = "teacher_id"),
-        inverseJoinColumns = @JoinColumn(name = "subject_id")
-    )
-    private List<Subject> habilitatedSubjects;
+  @ManyToMany
+  @JoinTable(
+    name = "teacher_subjects",
+    joinColumns = @JoinColumn(name = "teacher_id"),
+    inverseJoinColumns = @JoinColumn(name = "subject_id")
+  )
+  private List<Subject> habilitatedSubjects;
 
-    @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<TeacherAvailability> availabilities;
+  @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<TeacherAvailability> availabilities;
 
 
 
-    public Teacher() {}
+  public Teacher() {}
 
-    public Teacher(String teacherCode, String userName, String firstName,
-                   String lastName, String id, String email,
-                   String password, Date signInDate,
-                   Date startDate) {
+  public Teacher(String teacherCode, String userName, String firstName,
+     String lastName, String id, String email,
+     String password, Date signInDate,
+     Date startDate) {
 
-        super(userName, firstName, lastName, id, email, password, signInDate);
-        this.teacherCode = teacherCode;
-        this.startDate = startDate;
-    }
+    super(userName, firstName, lastName, id, email, password, signInDate);
+    this.teacherCode = teacherCode;
+    this.startDate = startDate;
+  }
 
-    public String getTeacherCode() {
-        return teacherCode;
-    }
+  public String getTeacherCode() {
+    return teacherCode;
+  }
 
-    public void setTeacherCode(String teacherCode) {
-        this.teacherCode = teacherCode;
-    }
+  public void setTeacherCode(String teacherCode) {
+    this.teacherCode = teacherCode;
+  }
 
-    public List<CourseGroup> getCourseGroups() {
-        return courseGroups;
-    }
+  public List<CourseGroup> getCourseGroups() {
+    return courseGroups;
+  }
 
-    public void setCourseGroups(List<CourseGroup> courseGroups) {
-        this.courseGroups = courseGroups;
-    }
+  public void setCourseGroups(List<CourseGroup> courseGroups) {
+    this.courseGroups = courseGroups;
+  }
 
-    public Date getStartDate() {
-        return startDate;
-    }
+  public Date getStartDate() {
+    return startDate;
+  }
 
-    public void setStartDate(Date startDate) {
-        this.startDate = startDate;
-    }
+  public void setStartDate(Date startDate) {
+    this.startDate = startDate;
+  }
 
-    public List<Subject> getHabilitatedSubjects() {
-        return habilitatedSubjects;
-    }
+  public List<Subject> getHabilitatedSubjects() {
+    return habilitatedSubjects;
+  }
 
-    public void setHabilitatedSubjects(List<Subject> habilitatedSubjects) {
-        this.habilitatedSubjects = habilitatedSubjects;
-    }
+  public void setHabilitatedSubjects(List<Subject> habilitatedSubjects) {
+    this.habilitatedSubjects = habilitatedSubjects;
+  }
 
-    public List<TeacherAvailability> getAvailabilities() {
-        return availabilities;
-    }
+  public List<TeacherAvailability> getAvailabilities() {
+    return availabilities;
+  }
 
-    public void setAvailabilities(List<TeacherAvailability> availabilities) {
-        this.availabilities = availabilities;
-    }
+  public void setAvailabilities(List<TeacherAvailability> availabilities) {
+    this.availabilities = availabilities;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

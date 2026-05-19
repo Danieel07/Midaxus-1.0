@@ -1,113 +1,154 @@
-package com.example.Midaxus.services;
+package com.example.midaxus.services;
 
-import com.example.Midaxus.model.dtos.TeacherDTO;
-import com.example.Midaxus.model.entities.Teacher;
-import com.example.Midaxus.model.mapper.TeacherMapper;
-import com.example.Midaxus.repositories.TeacherRepository;
-import com.example.Midaxus.model.dtos.TeacherAvailabilityDTO;
-import com.example.Midaxus.model.entities.Subject;
-import com.example.Midaxus.model.entities.TeacherAvailability;
-import com.example.Midaxus.repositories.SubjectRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.midaxus.model.dtos.TeacherDto;
+import com.example.midaxus.model.entities.Subject;
+import com.example.midaxus.model.entities.Teacher;
+import com.example.midaxus.model.entities.TeacherAvailability;
+import com.example.midaxus.model.mapper.TeacherMapper;
+import com.example.midaxus.repositories.SubjectRepository;
+import com.example.midaxus.repositories.TeacherRepository;
+import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
+/**
+ * Service implementation for managing teachers and their availabilities.
+ */
 @Service
-public class TeacherService implements ITeacher<TeacherDTO, String> {
+public class TeacherService implements ITeacher<TeacherDto, String> {
 
-    @Autowired
-    private TeacherRepository teacherRepository;
-    
-    @Autowired
-    private SubjectRepository subjectRepository;
-    
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+  private final TeacherRepository teacherRepository;
+  private final SubjectRepository subjectRepository;
+  private final PasswordEncoder passwordEncoder;
 
-    @Override
-    public TeacherDTO createTeacher(TeacherDTO teacherDTO) {
-        Teacher teacher = TeacherMapper.toEntity(teacherDTO);
-        if (teacher.getPassword() != null) {
-            teacher.setPassword(passwordEncoder.encode(teacher.getPassword()));
-        }
-        
-        // Asignar materias (competencias)
-        if (teacherDTO.getSubjectsIds() != null) {
-            List<Subject> subjects = subjectRepository.findAllById(teacherDTO.getSubjectsIds());
-            teacher.setHabilitatedSubjects(subjects);
-        }
-        
-        // Asignar disponibilidades
-        if (teacherDTO.getAvailabilities() != null) {
-            List<TeacherAvailability> availabilities = teacherDTO.getAvailabilities().stream().map(dto -> {
-                TeacherAvailability availability = new TeacherAvailability();
-                availability.setDayOfWeek(dto.getDayOfWeek());
-                availability.setStartTime(dto.getStartTime());
-                availability.setEndTime(dto.getEndTime());
-                availability.setTeacher(teacher);
-                return availability;
-            }).toList();
-            teacher.setAvailabilities(availabilities);
-        }
-        
-        Teacher saved = teacherRepository.save(teacher);
-        return TeacherMapper.toDTO(saved);
+  /**
+   * Constructs a TeacherService with required dependencies.
+   *
+   * @param teacherRepository the repository for teachers
+   * @param subjectRepository the repository for subjects
+   * @param passwordEncoder the encoder for teacher passwords
+   */
+  public TeacherService(
+      TeacherRepository teacherRepository,
+      SubjectRepository subjectRepository,
+      PasswordEncoder passwordEncoder) {
+    this.teacherRepository = teacherRepository;
+    this.subjectRepository = subjectRepository;
+    this.passwordEncoder = passwordEncoder;
+  }
+
+  /**
+   * Creates a new teacher, encoding their password and assigning subjects and availabilities.
+   *
+   * @param teacherDto the DTO containing teacher data
+   * @return the saved teacher DTO
+   */
+  @Override
+  public TeacherDto createTeacher(TeacherDto teacherDto) {
+    Teacher teacher = TeacherMapper.toEntity(teacherDto);
+    if (teacher.getPassword() != null) {
+      teacher.setPassword(passwordEncoder.encode(teacher.getPassword()));
     }
 
-    @Override
-    public TeacherDTO updateTeacher(String teacherId, TeacherDTO teacherDTO) {
-        Teacher teacher = teacherRepository.findByTeacherCode(teacherId)
-                .orElseThrow(() -> new RuntimeException("Teacher no encontrado"));
-                
-        // Actualizar materias (competencias)
-        if (teacherDTO.getSubjectsIds() != null) {
-            List<Subject> subjects = subjectRepository.findAllById(teacherDTO.getSubjectsIds());
-            teacher.setHabilitatedSubjects(subjects);
-        }
-        
-        // Actualizar disponibilidades
-        if (teacherDTO.getAvailabilities() != null) {
-            if (teacher.getAvailabilities() != null) {
-                teacher.getAvailabilities().clear();
-            }
-            List<TeacherAvailability> availabilities = teacherDTO.getAvailabilities().stream().map(dto -> {
-                TeacherAvailability availability = new TeacherAvailability();
-                availability.setDayOfWeek(dto.getDayOfWeek());
-                availability.setStartTime(dto.getStartTime());
-                availability.setEndTime(dto.getEndTime());
-                availability.setTeacher(teacher);
-                return availability;
-            }).toList();
-            if (teacher.getAvailabilities() != null) {
-                teacher.getAvailabilities().addAll(availabilities);
-            } else {
-                teacher.setAvailabilities(availabilities);
-            }
-        }
-        
-        Teacher saved = teacherRepository.save(teacher);
-        return TeacherMapper.toDTO(saved);
+    // Assign subjects (competencies)
+    if (teacherDto.getSubjectsIds() != null) {
+      List<Subject> subjects = subjectRepository.findAllById(teacherDto.getSubjectsIds());
+      teacher.setHabilitatedSubjects(subjects);
     }
 
-    @Override
-    public void deleteTeacher(String teacherId) {
-        teacherRepository.deleteById(teacherId);
+    // Assign availabilities
+    if (teacherDto.getAvailabilities() != null) {
+      List<TeacherAvailability> availabilities = teacherDto.getAvailabilities().stream().map(dto -> {
+        TeacherAvailability availability = new TeacherAvailability();
+        availability.setDayOfWeek(dto.getDayOfWeek());
+        availability.setStartTime(dto.getStartTime());
+        availability.setEndTime(dto.getEndTime());
+        availability.setTeacher(teacher);
+        return availability;
+      }).toList();
+      teacher.setAvailabilities(availabilities);
     }
 
-    @Override
-    public TeacherDTO getTeacher(String teacherId) {
-        Teacher teacher = teacherRepository.findByTeacherCode(teacherId)
-                .orElseThrow(() -> new RuntimeException("Teacher no encontrado"));
-        return TeacherMapper.toDTO(teacher);
+    Teacher saved = teacherRepository.save(teacher);
+    return TeacherMapper.toDto(saved);
+  }
+
+  /**
+   * Updates an existing teacher's subjects and availabilities.
+   *
+   * @param teacherId the ID/code of the teacher to update
+   * @param teacherDto the DTO containing updated teacher data
+   * @return the updated teacher DTO
+   */
+  @Override
+  public TeacherDto updateTeacher(String teacherId, TeacherDto teacherDto) {
+    Teacher teacher = teacherRepository.findByTeacherCode(teacherId)
+        .orElseThrow(() -> new RuntimeException("Teacher no encontrado"));
+
+    // Update subjects (competencies)
+    if (teacherDto.getSubjectsIds() != null) {
+      List<Subject> subjects = subjectRepository.findAllById(teacherDto.getSubjectsIds());
+      teacher.setHabilitatedSubjects(subjects);
     }
 
-    @Override
-    public List<TeacherDTO> getTeachers() {
-        return teacherRepository.findAll()
-                .stream()
-                .map(TeacherMapper::toDTO)
-                .toList();
+    // Update availabilities
+    if (teacherDto.getAvailabilities() != null) {
+      if (teacher.getAvailabilities() != null) {
+        teacher.getAvailabilities().clear();
+      }
+      List<TeacherAvailability> availabilities = teacherDto.getAvailabilities().stream().map(dto -> {
+        TeacherAvailability availability = new TeacherAvailability();
+        availability.setDayOfWeek(dto.getDayOfWeek());
+        availability.setStartTime(dto.getStartTime());
+        availability.setEndTime(dto.getEndTime());
+        availability.setTeacher(teacher);
+        return availability;
+      }).toList();
+      if (teacher.getAvailabilities() != null) {
+        teacher.getAvailabilities().addAll(availabilities);
+      } else {
+        teacher.setAvailabilities(availabilities);
+      }
     }
+
+    Teacher saved = teacherRepository.save(teacher);
+    return TeacherMapper.toDto(saved);
+  }
+
+  /**
+   * Deletes a teacher by their ID.
+   *
+   * @param teacherId the ID of the teacher to delete
+   */
+  @Override
+  public void deleteTeacher(String teacherId) {
+    teacherRepository.deleteById(teacherId);
+  }
+
+  /**
+   * Retrieves a teacher by their ID.
+   *
+   * @param teacherId the ID/code of the teacher to retrieve
+   * @return the teacher DTO
+   */
+  @Override
+  public TeacherDto getTeacher(String teacherId) {
+    Teacher teacher = teacherRepository.findByTeacherCode(teacherId)
+        .orElseThrow(() -> new RuntimeException("Teacher no encontrado"));
+    return TeacherMapper.toDto(teacher);
+  }
+
+  /**
+   * Retrieves all teachers.
+   *
+   * @return a list of teacher DTOs
+   */
+  @Override
+  public List<TeacherDto> getTeachers() {
+    return teacherRepository.findAll()
+        .stream()
+        .map(TeacherMapper::toDto)
+        .toList();
+  }
 }
+

@@ -1,58 +1,151 @@
-package com.example.Midaxus.model.dtos;
+package com.example.midaxus.model.dtos;
 
-import com.example.Midaxus.model.entities.CourseGroup;
-import com.example.Midaxus.model.entities.Student;
-import com.example.Midaxus.model.enums.EnrollmentStatus;
+import com.example.midaxus.model.entities.CourseGroup;
+import com.example.midaxus.model.entities.Student;
+import com.example.midaxus.model.enums.EnrollmentStatus;
 
-public class EnrollmentDTO {
+/**
+ * Data Transfer Object for EnrollmentDto.
+ */
+public class EnrollmentDto {
 
-    private String enrollmentId;
-    private String studentId;
-    private String courseGroupId;
-    private EnrollmentStatus status;
+  private String enrollmentId;
+  private String studentId;
+  private String courseGroupId;
+  private EnrollmentStatus status;
 
-    public EnrollmentDTO() {}
+  
+  /**
+   * Constructor for EnrollmentDto.
+   */
+  public EnrollmentDto() {}
 
-    public EnrollmentDTO(String enrollmentId, String studentId,
-                         String courseGroupId, EnrollmentStatus status) {
-        this.enrollmentId = enrollmentId;
-        this.studentId = studentId;
-        this.courseGroupId = courseGroupId;
-        this.status = status;
+  public EnrollmentDto(String enrollmentId, String studentId,
+     String courseGroupId, EnrollmentStatus status) {
+    this.enrollmentId = enrollmentId;
+    this.studentId = studentId;
+    this.courseGroupId = courseGroupId;
+    this.status = status;
 
 
-    // getters & setters
+  // getters & setters
 }
 
-    public String getEnrollmentId() {
-        return enrollmentId;
-    }
+  
+  /**
+   * Constructor for String getEnrollmentId.
+   */
+  
+  /**
+   * Gets the EnrollmentId.
+   */
+  public String getEnrollmentId() {
+    return enrollmentId;
+  }
 
-    public void setEnrollmentId(String enrollmentId) {
-        this.enrollmentId = enrollmentId;
-    }
+  
+  /**
+   * Constructor for void setEnrollmentId.
+   */
+  
+  /**
+   * Sets the EnrollmentId.
+   */
+  public void setEnrollmentId(String enrollmentId) {
+    this.enrollmentId = enrollmentId;
+  }
 
-    public String getStudentId() {
-        return studentId;
-    }
+  
+  /**
+   * Constructor for String getStudentId.
+   */
+  
+  /**
+   * Gets the StudentId.
+   */
+  public String getStudentId() {
+    return studentId;
+  }
 
-    public void setStudentId(String studentId) {
-        this.studentId = studentId;
-    }
+  
+  /**
+   * Constructor for void setStudentId.
+   */
+  
+  /**
+   * Sets the StudentId.
+   */
+  public void setStudentId(String studentId) {
+    this.studentId = studentId;
+  }
 
-    public String getCourseGroupId() {
-        return courseGroupId;
-    }
+  
+  /**
+   * Constructor for String getCourseGroupId.
+   */
+  
+  /**
+   * Gets the CourseGroupId.
+   */
+  public String getCourseGroupId() {
+    return courseGroupId;
+  }
 
-    public void setCourseGroupId(String courseGroupId) {
-        this.courseGroupId = courseGroupId;
-    }
+  
+  /**
+   * Constructor for void setCourseGroupId.
+   */
+  
+  /**
+   * Sets the CourseGroupId.
+   */
+  public void setCourseGroupId(String courseGroupId) {
+    this.courseGroupId = courseGroupId;
+  }
 
-    public EnrollmentStatus getStatus() {
-        return status;
-    }
+  
+  /**
+   * Constructor for EnrollmentStatus getStatus.
+   */
+  
+  /**
+   * Gets the Status.
+   */
+  public EnrollmentStatus getStatus() {
+    return status;
+  }
 
-    public void setStatus(EnrollmentStatus status) {
-        this.status = status;
-    }
+  
+  /**
+   * Constructor for void setStatus.
+   */
+  
+  /**
+   * Sets the Status.
+   */
+  public void setStatus(EnrollmentStatus status) {
+    this.status = status;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

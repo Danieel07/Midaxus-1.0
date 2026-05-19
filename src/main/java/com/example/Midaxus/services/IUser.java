@@ -1,8 +1,34 @@
-package com.example.Midaxus.services;
+package com.example.midaxus.services;
 
-public interface IUser<T,ID> {
-    T createUser(T t);
-    void deleteUser(ID id);
-    T getUser(ID id);
+/**
+ * Interface for User service operations.
+ *
+ * @param <T> the DTO type
+ * @param <ID> the ID type
+ */
+public interface IUser<T, ID> {
 
+  /**
+   * Creates a new user.
+   *
+   * @param t the user DTO to create
+   * @return the created user DTO
+   */
+  T createUser(T t);
+
+  /**
+   * Deletes a user by its ID.
+   *
+   * @param id the ID of the user to delete
+   */
+  void deleteUser(ID id);
+
+  /**
+   * Retrieves a user by its ID.
+   *
+   * @param id the ID of the user
+   * @return the user DTO
+   */
+  T getUser(ID id);
 }
+

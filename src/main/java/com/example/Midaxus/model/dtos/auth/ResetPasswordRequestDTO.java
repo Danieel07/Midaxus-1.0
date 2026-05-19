@@ -1,22 +1,79 @@
-package com.example.Midaxus.model.dtos.auth;
+package com.example.midaxus.model.dtos.auth;
 
-public class ResetPasswordRequestDTO {
-    private String token;
-    private String newPassword;
+/**
+ * Data Transfer Object for ResetPasswordRequestDto.
+ */
+public class ResetPasswordRequestDto {
+  private String token;
+  private String newPassword;
 
-    public String getToken() {
-        return token;
-    }
+  
+  /**
+   * Constructor for String getToken.
+   */
+  
+  /**
+   * Gets the Token.
+   */
+  public String getToken() {
+    return token;
+  }
 
-    public void setToken(String token) {
-        this.token = token;
-    }
+  
+  /**
+   * Constructor for void setToken.
+   */
+  
+  /**
+   * Sets the Token.
+   */
+  public void setToken(String token) {
+    this.token = token;
+  }
 
-    public String getNewPassword() {
-        return newPassword;
-    }
+  
+  /**
+   * Constructor for String getNewPassword.
+   */
+  
+  /**
+   * Gets the NewPassword.
+   */
+  public String getNewPassword() {
+    return newPassword;
+  }
 
-    public void setNewPassword(String newPassword) {
-        this.newPassword = newPassword;
-    }
+  
+  /**
+   * Constructor for void setNewPassword.
+   */
+  
+  /**
+   * Sets the NewPassword.
+   */
+  public void setNewPassword(String newPassword) {
+    this.newPassword = newPassword;
+  }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
