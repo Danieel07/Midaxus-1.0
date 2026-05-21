@@ -61,7 +61,7 @@ public class DashboardStatsController {
     stats.put("totalRooms", roomRepository.count());
     stats.put("totalCourseGroups", courseGroupRepository.count());
     stats.put("totalEnrollments",
-        enrollmentRepository.findAllByStatus(EnrollmentStatus.ENROLLED).size());
+        enrollmentRepository.countByStatus(EnrollmentStatus.ENROLLED));
     return ResponseEntity.ok(stats);
   }
 
@@ -81,11 +81,7 @@ public class DashboardStatsController {
 
     // Cada sesión de clase dura 2 horas (120 min) según regla de negocio
     // weeklyHours = cantidad de schedule sessions del profesor × 2
-    long scheduleSessions = scheduleSessionRepository.findAll().stream()
-        .filter(ss -> ss.getCourseGroup() != null
-            && ss.getCourseGroup().getTeacher() != null
-            && teacherCode.equals(ss.getCourseGroup().getTeacher().getTeacherCode()))
-        .count();
+    long scheduleSessions = scheduleSessionRepository.countByCourseGroup_Teacher_TeacherCode(teacherCode);
 
     // Si no hay schedule sessions registradas, calcular por las materias
     // (cada curso tiene sessionPerWeek definido en el Subject × 2h)
