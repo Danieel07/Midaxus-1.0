@@ -288,7 +288,8 @@ async function loadAvailableCoursesForUnified() {
         const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
         const opt = document.createElement("option");
         opt.value = cg.courseGroupId;
-        opt.textContent = `${subjName} (Grupo ${cg.code || '—'}) - Cupos: ${cg.capacity}`;
+        const available = (cg.capacity || 0) - (cg.enrolledCount || 0);
+        opt.textContent = `${subjName} (Grupo ${cg.code || '—'}) - Disponibles: ${available < 0 ? 0 : available}/${cg.capacity}`;
         select.appendChild(opt);
       });
     }
@@ -789,7 +790,11 @@ function renderAdminCourses() {
       <td class="p-3 border-b font-mono text-xs text-gray-500">${cg.code || "N/A"}</td>
       <td class="p-3 border-b font-medium text-gray-800">${subjName}</td>
       <td class="p-3 border-b text-gray-600">${teacherName}</td>
-      <td class="p-3 border-b text-center"><span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">${cg.capacity || 0}</span></td>
+      <td class="p-3 border-b text-center">
+        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full" title="Inscritos / Capacidad">
+          ${cg.enrolledCount || 0} / ${cg.capacity || 0}
+        </span>
+      </td>
       <td class="p-3 border-b">
         <div class="flex items-center gap-3">
           <button class="text-blue-600 hover:text-blue-800 transition-colors text-sm font-medium flex items-center gap-1" onclick="openEditSessionModal('${cg.courseGroupId}')">
@@ -941,7 +946,8 @@ async function openEnrollModal() {
         const subjName = subj ? subj.subjectName : cg.subjectId;
         const opt = document.createElement("option");
         opt.value = cg.courseGroupId;
-        opt.textContent = `${subjName} (Grupo ${cg.code}) - Cupos: ${cg.capacity}`;
+        const available = (cg.capacity || 0) - (cg.enrolledCount || 0);
+        opt.textContent = `${subjName} (Grupo ${cg.code}) - Disponibles: ${available < 0 ? 0 : available}/${cg.capacity}`;
         select.appendChild(opt);
       });
     } else {
