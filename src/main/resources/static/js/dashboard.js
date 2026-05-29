@@ -104,7 +104,9 @@ let selectedEl = null;
 let currentScreen = "dashboard";
 let autoRefreshTimer = null;
 let pendingDeleteAction = null;
-var _INTERNAL_USER_REGISTRY_ = []; // Final resilient name
+var _INTERNAL_USER_REGISTRY_ = []; 
+window.adminCoursesData = []; // Global courses cache
+window.allTeachersData = [];  // Global teachers cache
 function decodeJWT(token) {
   try {
     return JSON.parse(atob(token.split('.')[1]));
@@ -755,72 +757,132 @@ window.closeTeacherDetailsModal = closeTeacherDetailsModal;
 window.saveTeacherDetails = saveTeacherDetails;
 
 // ─── Admin Courses ───
-let adminCoursesData = [];
-let allTeachersData = [];
-
 async function loadAdminCourses() {
+  const tbody = document.getElementById("admin-courses-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-blue-600 animate-pulse">Cargando secciones...</td></tr>';
+
+  let diag = "";
   try {
     const [coursesRes, teachersRes, subjectsRes] = await Promise.all([
-      fetch('/api/course-groups', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+      fetch('/api/course-groups', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message })),
+      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message })),
+      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message }))
     ]);
-    
-    if (coursesRes.ok) adminCoursesData = await coursesRes.json();
-    if (teachersRes.ok) allTeachersData = await teachersRes.json();
-    if (subjectsRes.ok) window.allSubjectsList = await subjectsRes.json();
-    
-    renderAdminCourses();
+
+    if (coursesRes.ok) {
+      try {
+        const data = await coursesRes.json();
+        adminCoursesData = Array.isArray(data) ? data : [];
+      } catch (e) {
+        diag += "[Cursos: Error JSON] ";
+        adminCoursesData = [];
+      }
+    } else {
+      diag += `[Cursos: Error ${coursesRes.status || coursesRes.statusText}] `;
+      adminCoursesData = [];
+    }
+
+    if (teachersRes.ok) {
+      try {
+        const tData = await teachersRes.json();
+        allTeachersData = Array.isArray(tData) ? tData : [];
+      } catch (e) {
+        diag += "[Profesores: Error JSON] ";
+        allTeachersData = [];
+      }
+    } else {
+      diag += `[Profesores: Error ${teachersRes.status || teachersRes.statusText}] `;
+      allTeachersData = [];
+    }
+
+    if (subjectsRes.ok) {
+      try {
+        const sData = await subjectsRes.json();
+        window.allSubjectsList = Array.isArray(sData) ? sData : [];
+      } catch (e) {
+        diag += "[Materias: Error JSON] ";
+        window.allSubjectsList = [];
+      }
+    } else {
+      diag += `[Materias: Error ${subjectsRes.status || subjectsRes.statusText}] `;
+      window.allSubjectsList = [];
+    }
+
+    if (diag !== "") toast(`Aviso Carga: ${diag}`, "warning");
+
+    renderAdminCourses(diag);
     populateTeacherSelect();
   } catch (err) {
     console.error("Error loading courses or teachers", err);
-    toast("Error cargando sesiones", "error");
+    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-500 text-xs"><pre>${err.message}\n${err.stack}</pre></td></tr>`;
+    toast("Error cargando secciones", "error");
   }
 }
 
-function renderAdminCourses() {
+function renderAdminCourses(diagInfo = "") {
   const tbody = document.getElementById("admin-courses-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
   
-  if (adminCoursesData.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">No hay sesiones registradas.</td></tr>`;
+  if (!Array.isArray(adminCoursesData) || adminCoursesData.length === 0) {
+    const msg = diagInfo !== "" ? `Error de carga: ${diagInfo}` : "No hay sesiones registradas.";
+    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">${msg}</td></tr>`;
     return;
   }
   
-  adminCoursesData.forEach(cg => {
-    // Buscar nombre del profesor para mostrar
-    const teacher = allTeachersData.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId);
-    const teacherName = teacher ? ((teacher.firstName || teacher.userName || "Prof.") + (teacher.lastName ? " " + teacher.lastName : "")) : (cg.teacherId || "Sin asignar");
-    
-    // Buscar nombre de la materia
-    const subj = window.allSubjectsList?.find(s => s.idSubject === cg.subjectId);
-    const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
-    
-    const tr = document.createElement("tr");
-    tr.className = "hover:bg-gray-50 transition-colors";
-    tr.innerHTML = `
-      <td class="p-3 border-b font-mono text-xs text-gray-500">${cg.code || "N/A"}</td>
-      <td class="p-3 border-b font-medium text-gray-800">${subjName}</td>
-      <td class="p-3 border-b text-gray-600">${teacherName}</td>
-      <td class="p-3 border-b text-center">
-        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full" title="Inscritos / Capacidad">
-          ${cg.enrolledCount || 0} / ${cg.capacity || 0}
-        </span>
-      </td>
-      <td class="p-3 border-b">
-        <div class="flex items-center gap-3">
-          <button class="text-blue-600 hover:text-blue-800 transition-colors text-sm font-medium flex items-center gap-1" onclick="openEditSessionModal('${cg.courseGroupId}')">
-            <i class="fas fa-edit"></i> Asignar
-          </button>
-          <button class="text-red-500 hover:text-red-700 transition-colors text-sm font-medium flex items-center gap-1" onclick="deleteCourseGroup('${cg.courseGroupId}')">
-            <i class="fas fa-trash"></i> Borrar
-          </button>
-        </div>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
+  try {
+    adminCoursesData.forEach(cg => {
+      // Buscar nombre del profesor para mostrar de forma segura
+      let teacherName = "Sin asignar";
+      try {
+        if (Array.isArray(allTeachersData)) {
+          const teacher = allTeachersData.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId);
+          if (teacher) {
+            teacherName = `${teacher.firstName || teacher.userName || "Prof."} ${teacher.lastName || ""}`.trim();
+          } else if (cg.teacherId) {
+            teacherName = `ID: ${cg.teacherId}`;
+          }
+        }
+      } catch (e) { teacherName = "Error en nombre"; }
+      
+      // Buscar nombre de la materia de forma segura
+      let subjName = cg.subjectId || "Materia";
+      try {
+        if (Array.isArray(window.allSubjectsList)) {
+          const subj = window.allSubjectsList.find(s => s.idSubject === cg.subjectId);
+          if (subj) subjName = subj.subjectName;
+        }
+      } catch (e) { subjName = cg.subjectId || "Materia"; }
+      
+      const tr = document.createElement("tr");
+      tr.className = "hover:bg-gray-50 transition-colors";
+      tr.innerHTML = `
+        <td class="p-3 border-b font-mono text-xs text-gray-500">${cg.code || "N/A"}</td>
+        <td class="p-3 border-b font-medium text-gray-800">${subjName}</td>
+        <td class="p-3 border-b text-gray-600">${teacherName}</td>
+        <td class="p-3 border-b text-center">
+          <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full" title="Inscritos / Capacidad">
+            ${cg.enrolledCount || 0} / ${cg.capacity || 0}
+          </span>
+        </td>
+        <td class="p-3 border-b">
+          <div class="flex items-center gap-3">
+            <button class="text-blue-600 hover:text-blue-800 transition-colors text-sm font-medium flex items-center gap-1" onclick="openEditSessionModal('${cg.courseGroupId}')">
+              <i class="fas fa-edit"></i> Asignar
+            </button>
+            <button class="text-red-500 hover:text-red-700 transition-colors text-sm font-medium flex items-center gap-1" onclick="deleteCourseGroup('${cg.courseGroupId}')">
+              <i class="fas fa-trash"></i> Borrar
+            </button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (err) {
+    console.error("Error renderizando cursos", err);
+    tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-red-500 text-xs"><pre>${err.message}\n${err.stack}</pre></td></tr>`;
+  }
 }
 
 async function deleteCourseGroup(id) {
