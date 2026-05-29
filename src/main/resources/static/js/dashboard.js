@@ -198,6 +198,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const sc = document.getElementById("student-courses");
   if (sc) sc.style.display = session.role === "STUDENT" ? "block" : "none";
+
+  const st = document.getElementById("student-today-classes-section");
+  if (st) st.style.display = session.role === "STUDENT" ? "block" : "none";
   
   const tc = document.getElementById("teacher-courses");
   if (tc) tc.style.display = session.role === "TEACHER" ? "block" : "none";
@@ -420,6 +423,13 @@ async function saveEnrollmentUnified() {
   const courseGroupId = select.value;
   if (!courseGroupId) {
     toast("Selecciona una materia para inscribir", "warning");
+    return;
+  }
+
+  // Validar restricciones del docente
+  const validation = await validateTeacherRestrictions(courseGroupId);
+  if (!validation.valid) {
+    toast(validation.message, "error");
     return;
   }
 
@@ -818,7 +828,7 @@ async function openTeacherDetailsModal(uuid, teacherName) {
       `;
     });
     
-    if (teacher.availabilities) {
+    if (teacher.availabilities && teacher.subjectsIds && teacher.subjectsIds.length > 0) {
       const normTime = (t) => {
         if (Array.isArray(t)) return String(t[0]).padStart(2,'0') + ':' + String(t[1]||0).padStart(2,'0');
         if (typeof t === 'string') return t.substring(0,5);
@@ -844,7 +854,7 @@ async function saveTeacherDetails() {
   const uuid = document.getElementById("edit-teacher-id").value;
   const subjectsIds = Array.from(document.querySelectorAll(".subj-checkbox:checked")).map(cb => cb.value);
   
-  const availabilities = Array.from(document.querySelectorAll(".avail-matrix-cell.is-available")).map(cell => {
+  const availabilities = (subjectsIds.length === 0) ? [] : Array.from(document.querySelectorAll(".avail-matrix-cell.is-available")).map(cell => {
     const [start, end] = cell.dataset.slot.split("-");
     return { dayOfWeek: cell.dataset.day, startTime: start + ":00", endTime: end + ":00" };
   });
@@ -1160,6 +1170,13 @@ async function saveEnrollment() {
     return;
   }
 
+  // Validar restricciones del docente
+  const validation = await validateTeacherRestrictions(courseGroupId);
+  if (!validation.valid) {
+    toast(validation.message, "error");
+    return;
+  }
+
   let studentId = session.email || session.id; // Infalible
   try {
       const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
@@ -1290,9 +1307,89 @@ async function loadStudentCourses() {
 
     grid.innerHTML = htmlContent;
 
+    // Cargar clases de hoy
+    loadStudentTodayClasses(studentId, teachers);
+
   } catch (err) {
     console.error("Error cargando cursos del estudiante:", err);
     grid.innerHTML = `<p class="text-red-400 text-center col-span-full py-8">❌ Error crítico cargando tus clases: ${err.message}. ${diag}</p>`;
+  }
+}
+
+async function loadStudentTodayClasses(studentId, teachers) {
+  const section = document.getElementById("student-today-classes-section");
+  const grid = document.getElementById("student-today-classes-grid");
+  const badge = document.getElementById("student-today-count-badge");
+  const todayLabel = document.getElementById("student-today-name");
+  
+  if (!section || !grid) return;
+
+  const todayIndex = new Date().getDay(); // 0 = Sunday, 1 = Monday, ...
+  const daysMap = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  const todayName = daysMap[todayIndex];
+
+  if (todayLabel) todayLabel.textContent = todayName;
+
+  // Si hoy es Domingo (0), no hay clases
+  if (todayIndex === 0) {
+    section.style.display = "block";
+    grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-6">🎉 ¡Es Domingo! No tienes clases programadas hoy.</p>';
+    if (badge) badge.textContent = "0 clases";
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/student-schedules/${studentId}`, {
+      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+    });
+
+    if (!res.ok) {
+      section.style.display = "none";
+      return;
+    }
+
+    const slots = await res.json();
+    const todaySlots = slots.filter(s => {
+      const sDay = toSpanishDay(s.day);
+      return sDay.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === todayName.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    });
+
+    section.style.display = "block";
+
+    if (todaySlots.length === 0) {
+      grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-6">🏖️ No tienes clases programadas para hoy.</p>';
+      if (badge) badge.textContent = "0 clases";
+      return;
+    }
+
+    // Ordenar los bloques por hora de inicio
+    todaySlots.sort((a, b) => a.slot.localeCompare(b.slot));
+
+    if (badge) badge.textContent = `${todaySlots.length} clase${todaySlots.length > 1 ? 's' : ''}`;
+
+    grid.innerHTML = todaySlots.map((s, i) => {
+      // Buscar profesor real si está en cache/lista
+      const teacher = Array.isArray(teachers) ? teachers.find(t => t.id === s.teacherId || t.teacherCode === s.teacherId) : null;
+      const teacherStr = teacher ? ((teacher.firstName || '') + ' ' + (teacher.lastName || '')).trim() : 'Docente asignado';
+
+      return `
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 hover:shadow-md transition-all duration-300 flex items-start gap-4">
+          <div class="bg-blue-600 text-white rounded-lg px-3 py-2 flex flex-col items-center justify-center font-bold min-w-[70px] shadow-sm">
+            <span class="text-[9px] uppercase tracking-wider text-blue-200 leading-none">Hora</span>
+            <span class="text-xs leading-tight mt-0.5">${s.slot}</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h4 class="text-sm font-bold text-gray-800 truncate">${s.subjectName}</h4>
+            <p class="text-xs text-gray-500 mt-1 flex items-center gap-1.5"><i class="fas fa-users text-blue-500 w-3 text-center"></i>Grupo ${s.courseCode}</p>
+            <p class="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5"><i class="fas fa-map-marker-alt text-blue-500 w-3 text-center"></i>Salón: Por definir</p>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch(e) {
+    console.error("Error al cargar las clases de hoy", e);
+    section.style.display = "none";
   }
 }
 
@@ -1793,7 +1890,13 @@ function buildScheduleGrid(editable) {
 
 // Nueva función extraída para reusar el renderizado
 function renderScheduleGridUI(body, editable, dataToRender) {
-  TIME_SLOTS.forEach(slot => {
+  // Si es estudiante y tenemos bloques dinámicos definidos por la institución, usarlos
+  const slotsToUse = (session?.role === "STUDENT" && STU_SLOTS && STU_SLOTS.length > 0) ? STU_SLOTS : TIME_SLOTS;
+  const daysToUse = (session?.role === "STUDENT") ? STU_DAYS : DAYS;
+
+  body.innerHTML = "";
+
+  slotsToUse.forEach(slot => {
     const row = document.createElement("div");
     row.className = "grid-row";
 
@@ -1802,7 +1905,7 @@ function renderScheduleGridUI(body, editable, dataToRender) {
     tc.textContent = slot;
     row.appendChild(tc);
 
-    DAYS.forEach(day => {
+    daysToUse.forEach(day => {
       const cell = document.createElement("div");
       cell.className = "drop-cell";
       cell.dataset.slot = slot;
@@ -1814,7 +1917,8 @@ function renderScheduleGridUI(body, editable, dataToRender) {
         cell.addEventListener("drop",      cellDrop);
       }
 
-      const s = dataToRender[slot]?.[day];
+      // Buscar por el día tal como viene o traducido
+      const s = dataToRender[slot]?.[day] || dataToRender[slot]?.[toSpanishDay(day)];
       if (s) cell.appendChild(makeCard(s, slot, day, editable));
       row.appendChild(cell);
     });
@@ -2477,36 +2581,49 @@ function validateStudentPlacement(item, toDay, toSlot, fromDay) {
   // 1. Almuerzo
   if (isLunchSlot(toSlot)) return { valid: false, message: "Bloque de almuerzo no disponible" };
 
-  // 2. Disponibilidad del Profesor (ESTRICTO)
+  // 2. Disponibilidad y Restricciones del Profesor (ESTRICTO)
   const teacher = allTeachersData.find(t => t.id === item.teacherId || t.teacherCode === item.teacherId);
-  if (teacher && teacher.availabilities && teacher.availabilities.length > 0) {
-    const dayUpper = toDay.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const [slotStart, slotEnd] = toSlot.split("-");
-    
-    // Helper: normalize LocalTime from backend (can be array [8,0] or string "08:00:00" or "08:00")
-    const normalizeTime = (t) => {
-      if (Array.isArray(t)) {
-        return String(t[0]).padStart(2, '0') + ':' + String(t[1] || 0).padStart(2, '0');
-      }
-      if (typeof t === 'string') return t.substring(0, 5);
-      return '';
+  if (!teacher) {
+    return { valid: false, message: "El profesor asignado no se encuentra registrado en el sistema." };
+  }
+
+  // Validar si el docente tiene materias y disponibilidad configuradas
+  const hasSubjects = teacher.subjectsIds && teacher.subjectsIds.length > 0;
+  const hasAvailabilities = teacher.availabilities && teacher.availabilities.length > 0;
+
+  if (!hasSubjects || !hasAvailabilities) {
+    return { 
+      valid: false, 
+      message: `Asignación denegada. El docente ${item.teacherName || 'asignado'} aún no ha configurado su disponibilidad horaria o materias habilitadas en su perfil.` 
     };
+  }
 
-    const isAvailable = teacher.availabilities.some(av => {
-      const avDay = (av.dayOfWeek || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const avStart = normalizeTime(av.startTime);
-      const avEnd = normalizeTime(av.endTime);
-      
-      // Permitir cualquier disponibilidad que cubra completamente el slot del estudiante
-      return avDay === dayUpper && avStart <= slotStart && avEnd >= slotEnd;
-    });
-
-    if (!isAvailable) {
-      return { 
-        valid: false, 
-        message: `El profesor ${item.teacherName || 'asignado'} no tiene disponibilidad el ${toDay} a las ${toSlot}.` 
-      };
+  const dayUpper = toDay.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const [slotStart, slotEnd] = toSlot.split("-");
+  
+  // Helper: normalize LocalTime from backend (can be array [8,0] or string "08:00:00" or "08:00")
+  const normalizeTime = (t) => {
+    if (Array.isArray(t)) {
+      return String(t[0]).padStart(2, '0') + ':' + String(t[1] || 0).padStart(2, '0');
     }
+    if (typeof t === 'string') return t.substring(0, 5);
+    return '';
+  };
+
+  const isAvailable = teacher.availabilities.some(av => {
+    const avDay = (av.dayOfWeek || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const avStart = normalizeTime(av.startTime);
+    const avEnd = normalizeTime(av.endTime);
+    
+    // Permitir cualquier disponibilidad que cubra completamente el slot del estudiante
+    return avDay === dayUpper && avStart <= slotStart && avEnd >= slotEnd;
+  });
+
+  if (!isAvailable) {
+    return { 
+      valid: false, 
+      message: `El profesor ${item.teacherName || 'asignado'} no tiene disponibilidad el ${toDay} a las ${toSlot}.` 
+    };
   }
 
   // 3. Días consecutivos
@@ -2703,11 +2820,11 @@ function updateStudentProgress() {
   }
 }
 
-function clearStudentSchedule() {
+async function clearStudentSchedule() {
   customConfirm(
     "¿Limpiar horario?",
-    "¿Estás seguro de que deseas quitar todas las materias asignadas de tu horario actual?",
-    () => {
+    "¿Estás seguro de que deseas quitar todas las materias asignadas de tu horario actual y vaciarlo en el servidor?",
+    async () => {
       for (const slot in studentScheduleData) {
         for (const day in studentScheduleData[slot]) {
           if (studentScheduleData[slot][day]) {
@@ -2720,7 +2837,32 @@ function clearStudentSchedule() {
       buildStudentGrid();
       updateStudentProgress();
       validateEntireSchedule();
-      toast("Horario limpiado", "info");
+
+      // Vaciar en el servidor automáticamente para evitar caché inconsistente
+      let studentId = session.email || session.id;
+      try {
+        const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
+        if (sRes.ok) {
+           const students = await sRes.json();
+           const me = students.find(s => s.email === session.email);
+           if (me && me.id) studentId = me.id;
+           if (me && me.studentId) studentId = me.studentId;
+        }
+      } catch(e) {}
+
+      try {
+        await fetch(`/api/student-schedules/${studentId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + rawAuth?.token
+          },
+          body: JSON.stringify([])
+        });
+        toast("Horario limpiado y sincronizado con el servidor ✓", "success");
+      } catch (err) {
+        toast("Horario limpiado localmente, error de red", "warning");
+      }
     }
   );
 }
@@ -3457,5 +3599,48 @@ async function processGroupClosure(id, name) {
 window.openAtRiskGroupsModal = openAtRiskGroupsModal;
 window.closeAtRiskGroupsModal = closeAtRiskGroupsModal;
 window.processGroupClosure = processGroupClosure;
+
+async function validateTeacherRestrictions(courseGroupId) {
+  try {
+    // 1. Fetch course group details to get teacherId
+    const cgRes = await fetch(`/api/course-groups/${courseGroupId}`, {
+      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+    });
+    if (!cgRes.ok) return { valid: true }; // Permitir si falla la API
+    
+    const cg = await cgRes.json();
+    if (!cg || !cg.teacherId) {
+      return { valid: false, message: "Esta clase no tiene un profesor asignado." };
+    }
+    
+    // 2. Fetch all teachers to check their restrictions
+    const tRes = await fetch('/api/teachers', {
+      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+    });
+    if (!tRes.ok) return { valid: true };
+    
+    const teachers = await tRes.json();
+    const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherCode === cg.teacherId);
+    
+    if (!teacher) {
+      return { valid: false, message: "El profesor asignado a esta clase no se encuentra registrado." };
+    }
+    
+    const hasSubjects = teacher.subjectsIds && teacher.subjectsIds.length > 0;
+    const hasAvailabilities = teacher.availabilities && teacher.availabilities.length > 0;
+    
+    if (!hasSubjects || !hasAvailabilities) {
+      return {
+        valid: false,
+        message: `Inscripción denegada. El docente asignado (${(teacher.firstName || '') + ' ' + (teacher.lastName || '')}) aún no ha configurado su perfil de materias habilitadas o su disponibilidad semanal.`
+      };
+    }
+    
+    return { valid: true };
+  } catch (e) {
+    console.error("Error al validar restricciones de profesor:", e);
+    return { valid: true };
+  }
+}
 
 
