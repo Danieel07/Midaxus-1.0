@@ -30,5 +30,14 @@ public interface IUser<T, ID> {
    * @return the user DTO
    */
   T getUser(ID id);
+
+  /**
+   * Updates an existing user.
+   *
+   * @param id the ID of the user to update
+   * @param t the user DTO with updated information
+   * @return the updated user DTO
+   */
+  T updateUser(ID id, T t);
 }
 

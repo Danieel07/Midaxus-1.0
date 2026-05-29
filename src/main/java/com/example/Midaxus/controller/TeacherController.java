@@ -6,6 +6,7 @@ import java.net.URI;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +33,7 @@ public class TeacherController {
    * @return a ResponseEntity containing the created teacher DTO
    */
   @PostMapping
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<TeacherDto> createTeacher(@RequestBody TeacherDto dto) {
     TeacherDto done = teacherService.createTeacher(dto);
     return ResponseEntity
@@ -47,6 +49,7 @@ public class TeacherController {
    * @return a ResponseEntity containing the updated teacher DTO
    */
   @PutMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<TeacherDto> updateTeacher(
       @PathVariable String id, @RequestBody TeacherDto dto) {
     return ResponseEntity.ok(teacherService.updateTeacher(id, dto));
@@ -69,6 +72,7 @@ public class TeacherController {
    * @return a ResponseEntity with no content
    */
   @DeleteMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
   public ResponseEntity<Void> deleteTeacher(@PathVariable String id) {
     teacherService.deleteTeacher(id);
     return ResponseEntity.noContent().build();

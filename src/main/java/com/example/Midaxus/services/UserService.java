@@ -188,5 +188,37 @@ public class UserService implements IUser<UserDto, String> {
 
     return null;
   }
+
+  /**
+   * Updates an existing user.
+   *
+   * @param id the ID of the user to update
+   * @param dto the user DTO with updated information
+   * @return the updated user DTO
+   */
+  @Override
+  @Transactional
+  public UserDto updateUser(String id, UserDto dto) {
+    User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+    if (dto.getFirstName() != null) user.setFirstName(dto.getFirstName());
+    if (dto.getLastName() != null) user.setLastName(dto.getLastName());
+    if (dto.getEmail() != null) user.setEmail(dto.getEmail());
+    if (dto.getUserName() != null) user.setUserName(dto.getUserName());
+    if (dto.getPassword() != null && !dto.getPassword().trim().isEmpty()) {
+      user.setPassword(passwordEncoder.encode(dto.getPassword()));
+    }
+
+    if (user instanceof Teacher t) {
+      if (dto.getTeacherCode() != null) t.setTeacherCode(dto.getTeacherCode());
+    } else if (user instanceof Student s) {
+      if (dto.getStudentId() != null) s.setStudentId(dto.getStudentId());
+    } else if (user instanceof Admin a) {
+      if (dto.getAdminId() != null) a.setAdminId(dto.getAdminId());
+    }
+
+    User saved = userRepository.save(user);
+    return getUser(saved.getId());
+  }
 }
 
