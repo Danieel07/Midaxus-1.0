@@ -81,7 +81,13 @@ public class Subject {
     this.courseGroups = courseGroups;
   }
 
+  public List<Teacher> getTeachers() {
+    return teachers;
+  }
 
+  public void setTeachers(List<Teacher> teachers) {
+    this.teachers = teachers;
+  }
 }
 
 

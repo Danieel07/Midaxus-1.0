@@ -15,6 +15,7 @@ import java.util.Optional;
 public interface AttendanceRepository extends JpaRepository<Attendance, String> {
   List<Attendance> findByCourseGroupIdAndDate(String courseGroupId, LocalDate date);
   Optional<Attendance> findByStudentIdAndCourseGroupIdAndDate(String studentId, String courseGroupId, LocalDate date);
+  void deleteByCourseGroupId(String courseGroupId);
 }
 
 
