@@ -1,13 +1,18 @@
 package com.example.midaxus.services;
 
 import com.example.midaxus.model.dtos.SubjectDto;
+import com.example.midaxus.model.entities.CourseGroup;
 import com.example.midaxus.model.entities.InstitutionPolicy;
 import com.example.midaxus.model.entities.Subject;
+import com.example.midaxus.model.entities.Teacher;
 import com.example.midaxus.model.mapper.SubjectMapper;
+import com.example.midaxus.repositories.AttendanceRepository;
 import com.example.midaxus.repositories.InstitutionPolicyRepository;
 import com.example.midaxus.repositories.SubjectRepository;
+import com.example.midaxus.repositories.TeacherRepository;
 import java.util.List;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service implementation for managing subjects.
@@ -17,17 +22,25 @@ public class SubjectService implements ISubject<SubjectDto, String> {
 
   private final SubjectRepository subjectRepository;
   private final InstitutionPolicyRepository policyRepository;
+  private final AttendanceRepository attendanceRepository;
+  private final TeacherRepository teacherRepository;
 
   /**
    * Constructs a SubjectService with the specified repositories.
    *
    * @param subjectRepository the repository for subjects
    * @param policyRepository the repository for institution policies
+   * @param attendanceRepository the repository for attendance records
+   * @param teacherRepository the repository for teachers
    */
   public SubjectService(SubjectRepository subjectRepository,
-      InstitutionPolicyRepository policyRepository) {
+      InstitutionPolicyRepository policyRepository,
+      AttendanceRepository attendanceRepository,
+      TeacherRepository teacherRepository) {
     this.subjectRepository = subjectRepository;
     this.policyRepository = policyRepository;
+    this.attendanceRepository = attendanceRepository;
+    this.teacherRepository = teacherRepository;
   }
 
   /**
@@ -91,16 +104,34 @@ public class SubjectService implements ISubject<SubjectDto, String> {
   }
 
   /**
-   * Deletes a subject by its ID.
+   * Deletes a subject by its ID, performing a complete cleanup of dependencies.
    *
    * @param id the ID of the subject to delete
    */
   @Override
+  @Transactional
   public void delete(String id) {
-    if (!subjectRepository.existsById(id)) {
-      throw new RuntimeException("Subject no encontrado");
+    Subject subject = subjectRepository.findById(id)
+        .orElseThrow(() -> new RuntimeException("Subject no encontrado"));
+
+    // 1. Clean up teacher competencies (ManyToMany)
+    if (subject.getTeachers() != null) {
+      for (Teacher teacher : subject.getTeachers()) {
+        teacher.getHabilitatedSubjects().remove(subject);
+        teacherRepository.save(teacher);
+      }
     }
-    subjectRepository.deleteById(id);
+
+    // 2. Clean up attendance records for all groups of this subject
+    if (subject.getCourseGroups() != null) {
+      for (CourseGroup group : subject.getCourseGroups()) {
+        attendanceRepository.deleteByCourseGroupId(group.getCourseGroupId());
+      }
+    }
+
+    // 3. Delete the subject (CascadeType.ALL in Subject will handle CourseGroups,
+    // and CascadeType.ALL in CourseGroup will handle Enrollments, etc.)
+    subjectRepository.delete(subject);
   }
 
   /**

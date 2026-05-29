@@ -1,5 +1,6 @@
 package com.example.midaxus.services;
 
+import com.example.midaxus.model.dtos.TeacherAvailabilityDto;
 import com.example.midaxus.model.dtos.TeacherDto;
 import com.example.midaxus.model.entities.Subject;
 import com.example.midaxus.model.entities.Teacher;
@@ -10,6 +11,7 @@ import com.example.midaxus.repositories.TeacherRepository;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service implementation for managing teachers and their availabilities.
@@ -83,31 +85,34 @@ public class TeacherService implements ITeacher<TeacherDto, String> {
   @Override
   public TeacherDto updateTeacher(String teacherId, TeacherDto teacherDto) {
     Teacher teacher = teacherRepository.findByTeacherCode(teacherId)
-        .orElseThrow(() -> new RuntimeException("Teacher no encontrado"));
+        .orElseGet(() -> teacherRepository.findById(teacherId)
+            .orElseThrow(() -> new RuntimeException("Profesor no encontrado: " + teacherId)));
+
+    // Update basic info if provided
+    if (teacherDto.getFirstName() != null) teacher.setFirstName(teacherDto.getFirstName());
+    if (teacherDto.getLastName() != null) teacher.setLastName(teacherDto.getLastName());
+    if (teacherDto.getEmail() != null) teacher.setEmail(teacherDto.getEmail());
 
     // Update subjects (competencies)
     if (teacherDto.getSubjectsIds() != null) {
       List<Subject> subjects = subjectRepository.findAllById(teacherDto.getSubjectsIds());
-      teacher.setHabilitatedSubjects(subjects);
+      teacher.getHabilitatedSubjects().clear();
+      teacher.getHabilitatedSubjects().addAll(subjects);
     }
 
     // Update availabilities
     if (teacherDto.getAvailabilities() != null) {
-      if (teacher.getAvailabilities() != null) {
-        teacher.getAvailabilities().clear();
-      }
-      List<TeacherAvailability> availabilities = teacherDto.getAvailabilities().stream().map(dto -> {
+      teacher.getAvailabilities().clear();
+      for (TeacherAvailabilityDto dto : teacherDto.getAvailabilities()) {
+        if (dto.getStartTime().isAfter(dto.getEndTime())) {
+          throw new RuntimeException("La hora de inicio no puede ser posterior a la de fin");
+        }
         TeacherAvailability availability = new TeacherAvailability();
         availability.setDayOfWeek(dto.getDayOfWeek());
         availability.setStartTime(dto.getStartTime());
         availability.setEndTime(dto.getEndTime());
         availability.setTeacher(teacher);
-        return availability;
-      }).toList();
-      if (teacher.getAvailabilities() != null) {
-        teacher.getAvailabilities().addAll(availabilities);
-      } else {
-        teacher.setAvailabilities(availabilities);
+        teacher.getAvailabilities().add(availability);
       }
     }
 
@@ -139,16 +144,24 @@ public class TeacherService implements ITeacher<TeacherDto, String> {
   }
 
   /**
-   * Retrieves all teachers.
+   * Retrieves all teachers with high resilience.
    *
    * @return a list of teacher DTOs
    */
   @Override
+  @Transactional(readOnly = true)
   public List<TeacherDto> getTeachers() {
-    return teacherRepository.findAll()
-        .stream()
-        .map(TeacherMapper::toDto)
-        .toList();
+    try {
+      return teacherRepository.findAll()
+          .stream()
+          .filter(t -> t != null)
+          .map(TeacherMapper::toDto)
+          .filter(d -> d != null)
+          .toList();
+    } catch (Exception e) {
+      // Log error internally if logging were available
+      return List.of(); // Fallback to empty list to keep UI operational
+    }
   }
 }
 

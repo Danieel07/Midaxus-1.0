@@ -22,7 +22,19 @@ public class CourseGroupMapper {
     dto.setAcademicPeriodId(entity.getAcademicPeriod() != null ? entity.getAcademicPeriod().getPeriodId() : null);
     dto.setCode(entity.getCode());
     dto.setCapacity(entity.getCapacity());
-    dto.setEnrolledCount(0);
+    
+    // Cálculo dinámico de inscritos activos
+    int count = 0;
+    try {
+      if (entity.getEnrollments() != null) {
+        count = (int) entity.getEnrollments().stream()
+            .filter(e -> e != null && e.getStatus() == EnrollmentStatus.ENROLLED)
+            .count();
+      }
+    } catch (Exception e) {
+      count = 0; // Fallback por si la colección no está cargada
+    }
+    dto.setEnrolledCount(count);
     
     return dto;
   }

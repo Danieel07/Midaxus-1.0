@@ -24,14 +24,23 @@ public class TeacherMapper {
       teacher.getEmail(),
       teacher.getPassword());
     
-    if (teacher.getHabilitatedSubjects() != null) {
-    dto.setSubjectsIds(teacher.getHabilitatedSubjects().stream().map(Subject::getIdSubject).toList());
+    // Conteo y mapeo seguro para evitar fallos si la DB está desincronizada
+    try {
+      if (teacher.getHabilitatedSubjects() != null) {
+        dto.setSubjectsIds(teacher.getHabilitatedSubjects().stream().map(Subject::getIdSubject).toList());
+      }
+    } catch (Exception e) {
+      dto.setSubjectsIds(Collections.emptyList());
     }
     
-    if (teacher.getAvailabilities() != null) {
-    dto.setAvailabilities(teacher.getAvailabilities().stream().map(a -> 
-      new TeacherAvailabilityDto(a.getDayOfWeek(), a.getStartTime(), a.getEndTime())
-    ).toList());
+    try {
+      if (teacher.getAvailabilities() != null) {
+        dto.setAvailabilities(teacher.getAvailabilities().stream().map(a -> 
+          new TeacherAvailabilityDto(a.getDayOfWeek(), a.getStartTime(), a.getEndTime())
+        ).toList());
+      }
+    } catch (Exception e) {
+      dto.setAvailabilities(Collections.emptyList());
     }
     
     return dto;

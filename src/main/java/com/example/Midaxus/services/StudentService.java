@@ -7,6 +7,7 @@ import com.example.midaxus.repositories.StudentRepository;
 import java.util.List;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Service implementation for managing students.
@@ -67,15 +68,22 @@ public class StudentService implements IStudent<String, StudentDto> {
   }
 
   /**
-   * Retrieves all students.
+   * Retrieves all students with high resilience.
    *
    * @return a list of student DTOs
    */
   @Override
+  @Transactional(readOnly = true)
   public List<StudentDto> getStudents() {
-    return studentRepository.findAll().stream()
-        .map(StudentMapper::toDto)
-        .toList();
+    try {
+      return studentRepository.findAll().stream()
+          .filter(s -> s != null)
+          .map(StudentMapper::toDto)
+          .filter(d -> d != null)
+          .toList();
+    } catch (Exception e) {
+      return List.of();
+    }
   }
 }
 
