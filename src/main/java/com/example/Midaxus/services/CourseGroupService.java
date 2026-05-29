@@ -254,11 +254,17 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDto, String> 
   public List<CourseGroupDto> getCoursesByStudent(String studentId) {
     if (studentId == null || studentId.isEmpty()) return List.of();
 
-    // 1. Intentar buscar inscripciones donde el studentId de la entidad coincida directamente
+    // 1. Intentar buscar por studentId (Business ID)
     List<Enrollment> enrollments = enrollmentRepository
         .findByStudent_StudentIdAndStatus(studentId, EnrollmentStatus.ENROLLED);
 
-    // 2. Si no hay resultados, intentar buscar al estudiante por cualquier campo y luego sus inscripciones
+    // 2. Si no hay, intentar buscar por User ID (UUID)
+    if (enrollments.isEmpty()) {
+      enrollments = enrollmentRepository
+          .findByStudent_IdAndStatus(studentId, EnrollmentStatus.ENROLLED);
+    }
+
+    // 3. Fallback: Buscar el objeto student completo por cualquier ID y luego sus inscripciones
     if (enrollments.isEmpty()) {
       Student student = studentRepository.findById(studentId)
           .orElseGet(() -> studentRepository.findByStudentId(studentId)
@@ -266,16 +272,9 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDto, String> 
           .orElse(null)));
 
       if (student != null) {
-        // Buscar por el UUID interno
         enrollments = enrollmentRepository.findAllByStudent(student).stream()
             .filter(e -> e.getStatus() == EnrollmentStatus.ENROLLED)
             .toList();
-            
-        // Si sigue vacío pero tiene studentId de negocio, intentar por ese
-        if (enrollments.isEmpty() && student.getStudentId() != null) {
-          enrollments = enrollmentRepository
-              .findByStudent_StudentIdAndStatus(student.getStudentId(), EnrollmentStatus.ENROLLED);
-        }
       }
     }
 
