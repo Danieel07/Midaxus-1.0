@@ -34,6 +34,9 @@ public class InstitutionPolicy {
   @Column(name = "max_sessions_per_week")
   private Integer maxSessionsPerWeek;
 
+  @Column(name = "min_enrollment_threshold")
+  private Integer minEnrollmentThreshold;
+
   public Long getId() {
     return id;
   }
@@ -96,6 +99,14 @@ public class InstitutionPolicy {
 
   public void setMaxSessionsPerWeek(Integer maxSessionsPerWeek) {
     this.maxSessionsPerWeek = maxSessionsPerWeek;
+  }
+
+  public Integer getMinEnrollmentThreshold() {
+    return minEnrollmentThreshold;
+  }
+
+  public void setMinEnrollmentThreshold(Integer minEnrollmentThreshold) {
+    this.minEnrollmentThreshold = minEnrollmentThreshold;
   }
 }
 

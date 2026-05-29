@@ -242,7 +242,7 @@ function navigateTo(id) {
   }
   
   if (id === "teachers" && session.role === "ADMIN") {
-    loadAdminUsers(); // HU-17: Unified User Management
+    loadAdminUsers();
   }
   
   if (id === "settings" && session.role === "ADMIN") {
@@ -299,7 +299,7 @@ async function loadAvailableCoursesForUnified() {
   }
 }
 
-// ─── LÓGICA DE MATRÍCULA UNIFICADA (HU-20) ───
+// ─── LÓGICA DE MATRÍCULA UNIFICADA ───
 async function saveEnrollmentUnified() {
   const select = document.getElementById("unified-enroll-select");
   const courseGroupId = select.value;
@@ -352,7 +352,7 @@ async function saveEnrollmentUnified() {
   }
 }
 
-// ─── Institution Policies (HU-5) ──────────────────────────────────────────────
+// ─── Institution Policies ──────────────────────────────────────────────
 async function loadInstitutionPolicies() {
   try {
     const res = await fetch('/api/policies', {
@@ -368,31 +368,34 @@ async function loadInstitutionPolicies() {
       if(data.standardCapacity) document.getElementById('policy-standard-capacity').value = data.standardCapacity;
       if(data.capacityTolerancePercent !== undefined) document.getElementById('policy-capacity-tolerance').value = data.capacityTolerancePercent;
       if(data.maxSessionsPerWeek !== undefined) document.getElementById('policy-max-sessions').value = data.maxSessionsPerWeek;
-    }
-  } catch (err) {
-    console.error("Error loading policies", err);
-  }
-}
+      if(data.minEnrollmentThreshold !== undefined) document.getElementById('policy-min-enrollment').value = data.minEnrollmentThreshold;
+      }
+      } catch (err) {
+      console.error("Error loading policies", err);
+      }
+      }
 
-async function saveInstitutionPolicies() {
-  const classStart = document.getElementById('policy-class-start').value;
-  const classEnd = document.getElementById('policy-class-end').value;
-  const lunchStart = document.getElementById('policy-lunch-start').value;
-  const lunchEnd = document.getElementById('policy-lunch-end').value;
-  
-  const standardCap = document.getElementById('policy-standard-capacity').value;
-  const capTolerance = document.getElementById('policy-capacity-tolerance').value;
-  const maxSessions = document.getElementById('policy-max-sessions').value;
+      async function saveInstitutionPolicies() {
+      const classStart = document.getElementById('policy-class-start').value;
+      const classEnd = document.getElementById('policy-class-end').value;
+      const lunchStart = document.getElementById('policy-lunch-start').value;
+      const lunchEnd = document.getElementById('policy-lunch-end').value;
 
-  const payload = {
-    classStartTime: classStart ? classStart + ":00" : null,
-    classEndTime: classEnd ? classEnd + ":00" : null,
-    lunchStartTime: lunchStart ? lunchStart + ":00" : null,
-    lunchEndTime: lunchEnd ? lunchEnd + ":00" : null,
-    standardCapacity: standardCap ? parseInt(standardCap) : null,
-    capacityTolerancePercent: capTolerance ? parseInt(capTolerance) : null,
-    maxSessionsPerWeek: maxSessions ? parseInt(maxSessions) : null
-  };
+      const standardCap = document.getElementById('policy-standard-capacity').value;
+      const capTolerance = document.getElementById('policy-capacity-tolerance').value;
+      const maxSessions = document.getElementById('policy-max-sessions').value;
+      const minEnrollment = document.getElementById('policy-min-enrollment').value;
+
+      const payload = {
+      classStartTime: classStart ? classStart + ":00" : null,
+      classEndTime: classEnd ? classEnd + ":00" : null,
+      lunchStartTime: lunchStart ? lunchStart + ":00" : null,
+      lunchEndTime: lunchEnd ? lunchEnd + ":00" : null,
+      standardCapacity: standardCap ? parseInt(standardCap) : null,
+      capacityTolerancePercent: capTolerance ? parseInt(capTolerance) : null,
+      maxSessionsPerWeek: maxSessions ? parseInt(maxSessions) : null,
+      minEnrollmentThreshold: minEnrollment ? parseInt(minEnrollment) : null
+      };
 
   try {
     const res = await fetch('/api/policies', {
@@ -414,7 +417,7 @@ async function saveInstitutionPolicies() {
   }
 }
 
-// ─── Admin Subjects (HU-15) ───────────────────────────────────────────────────
+// ─── Admin Subjects ───────────────────────────────────────────────────
 async function loadAdminSubjects() {
   try {
     const res = await fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
@@ -583,7 +586,7 @@ async function deleteSubject(id, name) {
 }
 window.deleteSubject = deleteSubject;
 
-// ─── Admin Teachers (HU-6) ────────────────────────────────────────────────────
+// ─── Admin Teachers ────────────────────────────────────────────────────
 let allSubjectsCache = [];
 
 async function loadAdminTeachers() {
@@ -741,7 +744,7 @@ async function saveTeacherDetails() {
   }
 }
 
-// ─── Admin Courses (HU-13) ───────────────────────────────────────────────────
+// ─── Admin Courses ───
 let adminCoursesData = [];
 let allTeachersData = [];
 
@@ -920,7 +923,7 @@ async function saveSessionAssignment() {
   }
 }
 
-// ─── LÓGICA DE MATRÍCULA DE ESTUDIANTES (HU-18) ───
+// ─── LÓGICA DE MATRÍCULA DE ESTUDIANTES ───
 let enrollableCourses = [];
 
 async function openEnrollModal() {
@@ -2798,5 +2801,89 @@ window.verifyReAuth = verifyReAuth;
 window.openCreateUserModal = openCreateUserModal;
 window.closeCreateUserModal = closeCreateUserModal;
 window.saveNewUser = saveNewUser;
+
+// ─── GRUPOS EN RIESGO (HU-8) ───
+async function openAtRiskGroupsModal() {
+  const tbody = document.getElementById("at-risk-groups-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-amber-600 animate-pulse">Identificando grupos bajo el umbral...</td></tr>';
+  document.getElementById("modal-at-risk-groups").style.display = "flex";
+
+  try {
+    const [atRiskRes, teachersRes, subjectsRes] = await Promise.all([
+      fetch('/api/course-groups/at-risk', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
+      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
+      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+    ]);
+
+    const atRisk = atRiskRes.ok ? await atRiskRes.json() : [];
+    const teachers = teachersRes.ok ? await teachersRes.json() : [];
+    const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
+
+    if (atRisk.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-gray-400 italic">No se encontraron grupos bajo el umbral de matrícula mínima. 🎉</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = atRisk.map(cg => {
+      const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId);
+      const teacherName = teacher ? `${teacher.firstName} ${teacher.lastName}` : "Sin asignar";
+      const subj = subjects.find(s => s.idSubject === cg.subjectId);
+      const subjName = subj ? subj.subjectName : cg.subjectId;
+
+      return `
+        <tr class="hover:bg-amber-50 transition-colors">
+          <td class="p-3 border-b font-mono text-xs text-gray-500">${cg.code || "N/A"}</td>
+          <td class="p-3 border-b font-medium text-gray-800">${subjName}</td>
+          <td class="p-3 border-b text-gray-600">${teacherName}</td>
+          <td class="p-3 border-b text-center">
+            <span class="bg-red-100 text-red-700 font-bold px-2 py-1 rounded-full text-xs">
+              ${cg.enrolledCount || 0} alumnos
+            </span>
+          </td>
+          <td class="p-3 border-b">
+            <button onclick="processGroupClosure('${cg.courseGroupId}', '${subjName}')" 
+                    class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1.5 px-3 rounded shadow transition-all">
+              Cerrar Grupo
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+  } catch (err) {
+    console.error(err);
+    tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-red-500">Error al cargar grupos en riesgo.</td></tr>';
+  }
+}
+
+function closeAtRiskGroupsModal() {
+  document.getElementById("modal-at-risk-groups").style.display = "none";
+}
+
+async function processGroupClosure(id, name) {
+  if (!confirm(`¿Estás seguro de que deseas cerrar el grupo de "${name}"? \n\nEsta acción marcará el grupo como cerrado y deberás reasignar a los estudiantes manualmente.`)) return;
+
+  try {
+    const res = await fetch(`/api/course-groups/${id}/close`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+    });
+
+    if (res.ok) {
+      toast(`Grupo de "${name}" cerrado exitosamente.`, "success");
+      openAtRiskGroupsModal(); // Refrescar modal
+      loadAdminCourses();    // Refrescar tabla principal
+    } else {
+      toast("Error al cerrar el grupo.", "error");
+    }
+  } catch (err) {
+    toast("Error de red.", "error");
+  }
+}
+
+window.openAtRiskGroupsModal = openAtRiskGroupsModal;
+window.closeAtRiskGroupsModal = closeAtRiskGroupsModal;
+window.processGroupClosure = processGroupClosure;
 
 

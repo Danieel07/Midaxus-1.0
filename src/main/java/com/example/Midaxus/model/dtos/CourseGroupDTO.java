@@ -11,6 +11,8 @@ public class CourseGroupDto {
   private String academicPeriodId;
   private String code;
   private int capacity;
+  private int enrolledCount;
+  private boolean closed;
 
   
   /**
@@ -28,6 +30,12 @@ public class CourseGroupDto {
     this.capacity = capacity;
   }
 
+  public CourseGroupDto(String courseGroupId, String teacherId, String subjectId,
+      String academicPeriodId, String code, int capacity, int enrolledCount) {
+    this(courseGroupId, teacherId, subjectId, academicPeriodId, code, capacity);
+    this.enrolledCount = enrolledCount;
+  }
+
   
   /**
    * Constructor for String getCourseGroupId.
@@ -38,6 +46,14 @@ public class CourseGroupDto {
    */
   public String getCourseGroupId() {
     return courseGroupId;
+  }
+
+  public int getEnrolledCount() {
+    return enrolledCount;
+  }
+
+  public void setEnrolledCount(int enrolledCount) {
+    this.enrolledCount = enrolledCount;
   }
 
   

@@ -140,7 +140,10 @@
               <h1 class="text-2xl font-bold text-gray-800">Gestión de Grupos de Curso</h1>
               <p class="text-gray-600">Asigna materias a profesores con cupo. El horario lo gestiona cada estudiante.</p>
             </div>
-            <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2" onclick="openCreateScheduleSessionModal()"><i class="fas fa-plus"></i> Nuevo Grupo</button>
+            <div class="flex gap-2">
+              <button class="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2" onclick="openAtRiskGroupsModal()"><i class="fas fa-exclamation-triangle"></i> Grupos en Riesgo</button>
+              <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2" onclick="openCreateScheduleSessionModal()"><i class="fas fa-plus"></i> Nuevo Grupo</button>
+            </div>
           </div>
           
           <div class="overflow-x-auto">
@@ -215,6 +218,38 @@
             <div class="flex justify-end gap-3">
               <button class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50" onclick="closeCreateScheduleSessionModal()">Cancelar</button>
               <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-2" onclick="saveNewScheduleSession()"><i class="fas fa-save"></i> Crear</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Grupos en Riesgo -->
+        <div id="modal-at-risk-groups" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
+          <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+              <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-exclamation-triangle text-amber-500"></i> Grupos Bajo el Umbral Mínimo</h2>
+              <button class="text-gray-400 hover:text-gray-600" onclick="closeAtRiskGroupsModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="text-sm text-gray-600 mb-6">Estos grupos no han alcanzado el mínimo de estudiantes configurado y pueden ser cerrados para optimizar recursos.</p>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="bg-amber-50 text-amber-900">
+                    <th class="p-3 border-b border-amber-100">Código</th>
+                    <th class="p-3 border-b border-amber-100">Materia</th>
+                    <th class="p-3 border-b border-amber-100">Profesor</th>
+                    <th class="p-3 border-b border-amber-100">Inscritos</th>
+                    <th class="p-3 border-b border-amber-100">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="at-risk-groups-table-body" class="divide-y divide-amber-100">
+                  <!-- Dinámico -->
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="mt-6 flex justify-end">
+              <button class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300 transition" onclick="closeAtRiskGroupsModal()">Cerrar</button>
             </div>
           </div>
         </div>
@@ -351,7 +386,7 @@
           </div>
         </div>
 
-        <!-- Modal Re-Autenticación (HU-17) -->
+        <!-- Modal Re-Autenticación -->
         <div id="modal-reauth" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60] backdrop-blur-sm">
           <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md transform transition-all">
             <div class="text-center mb-6">
@@ -381,7 +416,7 @@
           </div>
         </div>
 
-        <!-- Modal Crear Usuario (HU-17) -->
+        <!-- Modal Crear Usuario -->
         <div id="modal-create-user" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-[60] backdrop-blur-sm">
           <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-lg transform transition-all">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
@@ -516,7 +551,7 @@
         </div>
       </section>
       
-      <!-- ── STUDENT ENROLLMENT & SCHEDULE PROCESS (HU-20) ── -->
+      <!-- ── STUDENT ENROLLMENT & SCHEDULE PROCESS ── -->
       <section id="screen-enrollment-process" class="screen">
         <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
           <!-- Header -->
@@ -747,7 +782,7 @@
                 <p class="text-xs text-gray-500 mt-1">El aforo máximo será el estándar + este porcentaje.</p>
               </div>
               <div class="col-span-1 md:col-span-2">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Límite Máximo de Sesiones Semanales (HU-11)</label>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Límite Máximo de Sesiones Semanales</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="fas fa-calendar-week text-gray-400"></i>
@@ -755,6 +790,16 @@
                   <input type="number" id="policy-max-sessions" min="1" max="10" class="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-3 focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: 4">
                 </div>
                 <p class="text-xs text-gray-500 mt-1">Número máximo de veces que una materia se puede dictar por semana.</p>
+              </div>
+              <div class="col-span-1 md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Umbral Mínimo de Matrícula</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-user-minus text-gray-400"></i>
+                  </div>
+                  <input type="number" id="policy-min-enrollment" min="1" max="50" class="w-full border border-gray-300 rounded-lg py-2 pl-10 pr-3 focus:ring-2 focus:ring-red-500 outline-none" placeholder="Ej: 10">
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Grupos con menos de esta cantidad de estudiantes se marcarán para cierre.</p>
               </div>
             </div>
 

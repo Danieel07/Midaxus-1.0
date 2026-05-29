@@ -13,6 +13,7 @@ import java.util.List;
  */
 public interface EnrollmentRepository extends JpaRepository<Enrollment, String> {
   List<Enrollment> getAllByCourseGroup(CourseGroup courseGroup);
+  long countByCourseGroupAndStatus(CourseGroup courseGroup, EnrollmentStatus status);
 
   List<Enrollment> findAllByStatus(EnrollmentStatus status);
   long countByStatus(EnrollmentStatus status);

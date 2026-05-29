@@ -2,6 +2,7 @@ package com.example.midaxus.model.mapper;
 
 import com.example.midaxus.model.dtos.CourseGroupDto;
 import com.example.midaxus.model.entities.CourseGroup;
+import com.example.midaxus.model.enums.EnrollmentStatus;
 
 import java.util.List;
 
@@ -11,17 +12,19 @@ public class CourseGroupMapper {
   public static CourseGroupDto toDto(CourseGroup entity) {
 
     if (entity == null) {
-  return null;
-  }
+      return null;
+    }
 
-    return new CourseGroupDto(
-      entity.getCourseGroupId(),
-      entity.getTeacher() != null ? entity.getTeacher().getId() : null,
-      entity.getSubject() != null ? entity.getSubject().getIdSubject() : null,
-      entity.getAcademicPeriod() != null ? entity.getAcademicPeriod().getPeriodId() : null,
-      entity.getCode(),
-      entity.getCapacity()
-    );
+    CourseGroupDto dto = new CourseGroupDto();
+    dto.setCourseGroupId(entity.getCourseGroupId());
+    dto.setTeacherId(entity.getTeacher() != null ? entity.getTeacher().getId() : null);
+    dto.setSubjectId(entity.getSubject() != null ? entity.getSubject().getIdSubject() : null);
+    dto.setAcademicPeriodId(entity.getAcademicPeriod() != null ? entity.getAcademicPeriod().getPeriodId() : null);
+    dto.setCode(entity.getCode());
+    dto.setCapacity(entity.getCapacity());
+    dto.setEnrolledCount(0);
+    
+    return dto;
   }
 
 
