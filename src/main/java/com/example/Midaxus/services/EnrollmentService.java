@@ -96,16 +96,12 @@ public class EnrollmentService implements IEnrollment<EnrollmentDto, String> {
     int tolPct =
         policy.getCapacityTolerancePercent() != null ? policy.getCapacityTolerancePercent() : 0;
 
-    int current = enrollmentRepository.getAllByCourseGroup(courseGroup).size();
+    long currentCount = enrollmentRepository.countByCourseGroupAndStatus(courseGroup, EnrollmentStatus.ENROLLED);
     int baseCapacity = courseGroup.getCapacity() > 0 ? courseGroup.getCapacity() : stdCap;
     int maxAllowed = baseCapacity + (baseCapacity * tolPct / 100);
 
-    if (maxAllowed <= 0) {
-      maxAllowed = 40;
-    }
-
-    if (current >= maxAllowed) {
-      throw new RuntimeException("Curso lleno (aforo máximo alcanzado)");
+    if (currentCount >= maxAllowed) {
+      throw new RuntimeException("Curso lleno (aforo máximo alcanzado: " + maxAllowed + ")");
     }
 
     Enrollment enrollment = EnrollmentMapper.toEntity(dto);

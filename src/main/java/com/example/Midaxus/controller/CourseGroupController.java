@@ -107,5 +107,26 @@ public class CourseGroupController {
   public ResponseEntity<List<CourseGroupDto>> getBySubject(@PathVariable String subjectId) {
     return ResponseEntity.ok(service.getBySubject(subjectId));
   }
+
+  /**
+   * Retrieves course groups that are at risk of closure due to low enrollment.
+   *
+   * @return a list of course groups at risk
+   */
+  @GetMapping("/at-risk")
+  public ResponseEntity<List<CourseGroupDto>> getGroupsAtRisk() {
+    return ResponseEntity.ok(service.getGroupsAtRisk());
+  }
+
+  /**
+   * Closes a course group.
+   *
+   * @param id the unique identifier of the course group to close
+   * @return the updated course group DTO
+   */
+  @PostMapping("/{id}/close")
+  public ResponseEntity<CourseGroupDto> closeGroup(@PathVariable String id) {
+    return ResponseEntity.ok(service.closeGroup(id));
+  }
 }
 

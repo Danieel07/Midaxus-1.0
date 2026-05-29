@@ -14,6 +14,7 @@ public class InstitutionPolicyDto {
   private Integer standardCapacity;
   private Integer capacityTolerancePercent;
   private Integer maxSessionsPerWeek;
+  private Integer minEnrollmentThreshold;
 
   
   /**
@@ -205,6 +206,14 @@ public class InstitutionPolicyDto {
    */
   public void setMaxSessionsPerWeek(Integer maxSessionsPerWeek) {
     this.maxSessionsPerWeek = maxSessionsPerWeek;
+  }
+
+  public Integer getMinEnrollmentThreshold() {
+    return minEnrollmentThreshold;
+  }
+
+  public void setMinEnrollmentThreshold(Integer minEnrollmentThreshold) {
+    this.minEnrollmentThreshold = minEnrollmentThreshold;
   }
 }
 

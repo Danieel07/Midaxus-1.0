@@ -67,13 +67,25 @@ public class InstitutionPolicyService implements IInstitutionPolicy {
       policy.setLunchEndTime(dto.getLunchEndTime());
     }
     if (dto.getStandardCapacity() != null) {
+      if (dto.getStandardCapacity() <= 0) {
+        throw new RuntimeException("El aforo estándar debe ser mayor a 0");
+      }
       policy.setStandardCapacity(dto.getStandardCapacity());
     }
     if (dto.getCapacityTolerancePercent() != null) {
+      if (dto.getCapacityTolerancePercent() < 0) {
+        throw new RuntimeException("La tolerancia no puede ser negativa");
+      }
       policy.setCapacityTolerancePercent(dto.getCapacityTolerancePercent());
     }
     if (dto.getMaxSessionsPerWeek() != null) {
       policy.setMaxSessionsPerWeek(dto.getMaxSessionsPerWeek());
+    }
+    if (dto.getMinEnrollmentThreshold() != null) {
+      if (dto.getMinEnrollmentThreshold() < 0) {
+        throw new RuntimeException("El umbral mínimo no puede ser negativo");
+      }
+      policy.setMinEnrollmentThreshold(dto.getMinEnrollmentThreshold());
     }
 
     policy = repository.save(policy);
@@ -96,6 +108,7 @@ public class InstitutionPolicyService implements IInstitutionPolicy {
     dto.setStandardCapacity(entity.getStandardCapacity());
     dto.setCapacityTolerancePercent(entity.getCapacityTolerancePercent());
     dto.setMaxSessionsPerWeek(entity.getMaxSessionsPerWeek());
+    dto.setMinEnrollmentThreshold(entity.getMinEnrollmentThreshold());
     return dto;
   }
 }

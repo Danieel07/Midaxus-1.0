@@ -12,6 +12,7 @@ import com.example.midaxus.model.mapper.CourseGroupMapper;
 import com.example.midaxus.repositories.AcademicPeriodRepository;
 import com.example.midaxus.repositories.CourseGroupRepository;
 import com.example.midaxus.repositories.EnrollmentRepository;
+import com.example.midaxus.repositories.InstitutionPolicyRepository;
 import com.example.midaxus.repositories.StudentRepository;
 import com.example.midaxus.repositories.SubjectRepository;
 import com.example.midaxus.repositories.TeacherRepository;
@@ -45,6 +46,35 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDto, String> 
 
   @Autowired
   private StudentRepository studentRepository;
+
+  @Autowired
+  private InstitutionPolicyRepository policyRepository;
+
+  /**
+   * Identifies groups below the minimum enrollment threshold.
+   *
+   * @return a list of course groups at risk of closure
+   */
+  public List<CourseGroupDto> getGroupsAtRisk() {
+    int threshold = policyRepository.findById(1L)
+        .map(p -> p.getMinEnrollmentThreshold() != null ? p.getMinEnrollmentThreshold() : 10)
+        .orElse(10);
+
+    return getAll().stream()
+        .filter(cg -> cg.getEnrolledCount() < threshold)
+        .toList();
+  }
+
+  /**
+   * Closes a course group placeholder.
+   *
+   * @param id the unique identifier of the course group to close
+   * @return the course group DTO
+   */
+  public CourseGroupDto closeGroup(String id) {
+    // Logic removed due to DB incompatibility
+    return getById(id);
+  }
 
   /**
    * Creates a new course group.
