@@ -72,7 +72,7 @@ public class DashboardStatsController {
    * @param teacherCode the code of the teacher.
    * @return the response entity with the teacher statistics.
    */
-  @GetMapping("/stats/teacher/{teacherCode}")
+  @GetMapping("/stats/teacher/{teacherCode:.+}")
   public ResponseEntity<Map<String, Object>> getTeacherStats(@PathVariable String teacherCode) {
     Map<String, Object> stats = new HashMap<>();
 
@@ -110,7 +110,7 @@ public class DashboardStatsController {
    * @param studentId the ID of the student.
    * @return the response entity with the student statistics.
    */
-  @GetMapping("/stats/student/{studentId}")
+  @GetMapping("/stats/student/{studentId:.+}")
   public ResponseEntity<Map<String, Object>> getStudentStats(@PathVariable String studentId) {
     Map<String, Object> stats = new HashMap<>();
 

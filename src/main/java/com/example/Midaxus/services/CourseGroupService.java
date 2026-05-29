@@ -252,32 +252,34 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDto, String> 
    */
   @Override
   public List<CourseGroupDto> getCoursesByStudent(String studentId) {
-    // Intentar buscar por studentId primero
+    if (studentId == null || studentId.isEmpty()) return List.of();
+
+    // 1. Intentar buscar por studentId (Business ID)
     List<Enrollment> enrollments = enrollmentRepository
         .findByStudent_StudentIdAndStatus(studentId, EnrollmentStatus.ENROLLED);
 
-    // Si no encontró nada, intentar buscar al estudiante por su UUID (id de User)
+    // 2. Si no hay, intentar buscar por User ID (UUID)
     if (enrollments.isEmpty()) {
-      Student student = studentRepository.findById(studentId).orElse(null);
-      if (student != null && student.getStudentId() != null) {
-        enrollments = enrollmentRepository
-            .findByStudent_StudentIdAndStatus(student.getStudentId(), EnrollmentStatus.ENROLLED);
-      }
+      enrollments = enrollmentRepository
+          .findByStudent_IdAndStatus(studentId, EnrollmentStatus.ENROLLED);
     }
 
-    // Si aún no encontró nada, intentar buscar por email (fallback final)
+    // 3. Fallback: Buscar el objeto student completo por cualquier ID y luego sus inscripciones
     if (enrollments.isEmpty()) {
-      Student student = studentRepository.findAll().stream()
-          .filter(s -> s.getEmail() != null && s.getEmail().equals(studentId))
-          .findFirst()
-          .orElse(null);
-      if (student != null && student.getStudentId() != null) {
-        enrollments = enrollmentRepository
-            .findByStudent_StudentIdAndStatus(student.getStudentId(), EnrollmentStatus.ENROLLED);
+      Student student = studentRepository.findById(studentId)
+          .orElseGet(() -> studentRepository.findByStudentId(studentId)
+          .orElseGet(() -> studentRepository.findByEmail(studentId)
+          .orElse(null)));
+
+      if (student != null) {
+        enrollments = enrollmentRepository.findAllByStudent(student).stream()
+            .filter(e -> e.getStatus() == EnrollmentStatus.ENROLLED)
+            .toList();
       }
     }
 
     return enrollments.stream()
+        .filter(e -> e != null && e.getCourseGroup() != null)
         .map(Enrollment::getCourseGroup)
         .map(CourseGroupMapper::toDto)
         .toList();

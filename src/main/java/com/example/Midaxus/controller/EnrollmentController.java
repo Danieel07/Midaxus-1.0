@@ -105,7 +105,7 @@ public class EnrollmentController {
    * @param studentId the ID of the student.
    * @return the response entity with the list of course groups.
    */
-  @GetMapping("/student/{studentId}/courses")
+  @GetMapping("/student/{studentId:.+}/courses")
   public ResponseEntity<List<CourseGroupDto>> getCoursesByStudent(@PathVariable String studentId) {
     return ResponseEntity.ok(courseGroupService.getCoursesByStudent(studentId));
   }

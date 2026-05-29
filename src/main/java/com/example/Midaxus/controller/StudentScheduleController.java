@@ -30,7 +30,7 @@ public class StudentScheduleController {
    * @param slots the list of schedule slots to save
    * @return a ResponseEntity containing an ApiResponse indicating success
    */
-  @PostMapping("/{studentId}")
+  @PostMapping("/{studentId:.+}")
   public ResponseEntity<ApiResponse<Void>> saveSchedule(
       @PathVariable String studentId,
       @RequestBody List<StudentScheduleSlotDto> slots) {
@@ -45,7 +45,7 @@ public class StudentScheduleController {
    * @param studentId the ID of the student
    * @return a ResponseEntity containing a list of student schedule slot DTOs
    */
-  @GetMapping("/{studentId}")
+  @GetMapping("/{studentId:.+}")
   public ResponseEntity<List<StudentScheduleSlotDto>> getSchedule(@PathVariable String studentId) {
     return ResponseEntity.ok(studentScheduleService.getStudentSchedule(studentId));
   }

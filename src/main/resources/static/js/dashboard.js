@@ -107,6 +107,15 @@ let pendingDeleteAction = null;
 var _INTERNAL_USER_REGISTRY_ = []; 
 window.adminCoursesData = []; // Global courses cache
 window.allTeachersData = [];  // Global teachers cache
+
+// Student Schedule Builder State
+let studentScheduleData = {};
+let studentPool = [];
+let studentDragSrc = null;
+let studentPolicies = null;
+let studentSubjectsMap = {};
+const SUBJECT_EMOJIS = ["📘","📗","📕","📙","📓","📔"];
+let LUNCH_SLOT_LABEL = "13:00-14:00";
 function decodeJWT(token) {
   try {
     return JSON.parse(atob(token.split('.')[1]));
@@ -291,33 +300,63 @@ function navigateTo(id) {
 }
 
 async function loadAvailableCoursesForUnified() {
+  console.log("Cargando materias disponibles para el selector...");
   const select = document.getElementById("unified-enroll-select");
-  if (!select) return;
+  if (!select) {
+    console.warn("No se encontró el elemento unified-enroll-select");
+    return;
+  }
 
+  let diag = "";
   try {
+    const headers = { 'Authorization': 'Bearer ' + rawAuth?.token };
     const [coursesRes, subjectsRes] = await Promise.all([
-      fetch('/api/course-groups', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+      fetch('/api/course-groups', { headers, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message })),
+      fetch('/api/subjects', { headers, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message }))
     ]);
 
-    if (coursesRes.ok && subjectsRes.ok) {
-      const courses = await coursesRes.json();
-      const allSubj = await subjectsRes.json();
+    let courses = [];
+    let allSubj = [];
 
-      select.innerHTML = '<option value="">Seleccione una materia...</option>';
-      courses.forEach(cg => {
-        const subj = allSubj.find(s => s.idSubject === cg.subjectId);
-        const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
-        const opt = document.createElement("option");
-        opt.value = cg.courseGroupId;
-        const available = (cg.capacity || 0) - (cg.enrolledCount || 0);
-        opt.textContent = `${subjName} (Grupo ${cg.code || '—'}) - Disponibles: ${available < 0 ? 0 : available}/${cg.capacity}`;
-        select.appendChild(opt);
-      });
+    if (coursesRes.ok) {
+        courses = await coursesRes.json().catch(() => []);
+        console.log(`Cursos cargados: ${courses.length}`);
+    } else {
+        diag += `[Cursos: Error ${coursesRes.status || coursesRes.statusText}] `;
+        console.error("Error cargando cursos", coursesRes.statusText);
     }
+
+    if (subjectsRes.ok) {
+        allSubj = await subjectsRes.json().catch(() => []);
+        console.log(`Materias cargadas: ${allSubj.length}`);
+    } else {
+        diag += `[Materias: Error ${subjectsRes.status || subjectsRes.statusText}] `;
+        console.error("Error cargando materias", subjectsRes.statusText);
+    }
+
+    if (!Array.isArray(courses) || courses.length === 0) {
+      console.log("No hay cursos disponibles para mostrar en el select");
+      select.innerHTML = `<option value="">${diag || 'No hay clases disponibles'}</option>`;
+      return;
+    }
+
+    select.innerHTML = '<option value="">Seleccione una materia...</option>';
+    courses.forEach(cg => {
+      if (!cg) return;
+      const subj = Array.isArray(allSubj) ? allSubj.find(s => s && s.idSubject === cg.subjectId) : null;
+      const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
+      const opt = document.createElement("option");
+      opt.value = cg.courseGroupId;
+      const available = (cg.capacity || 0) - (cg.enrolledCount || 0);
+      opt.textContent = `${subjName} (Grupo ${cg.code || '—'}) - Disponibles: ${available < 0 ? 0 : available}/${cg.capacity}`;
+      select.appendChild(opt);
+    });
+    
+    if (diag !== "") toast(`Aviso: ${diag}`, "warning");
+
   } catch (err) {
-    console.error(err);
-    select.innerHTML = '<option value="">Error al cargar</option>';
+    console.error("Fallo crítico en loadAvailableCoursesForUnified:", err);
+    select.innerHTML = `<option value="">Error: ${err.message}</option>`;
   }
 }
 
@@ -335,7 +374,7 @@ async function saveEnrollmentUnified() {
       const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
       if (sRes.ok) {
          const students = await sRes.json();
-         const me = students.find(s => s.email === session.email);
+         const me = Array.isArray(students) ? students.find(s => s.email === session.email) : null;
          if (me) {
             studentId = me.studentId || me.id;
          }
@@ -362,9 +401,9 @@ async function saveEnrollmentUnified() {
       toast("Materia inscrita correctamente 🎉", "success");
       // Recargar el pool y el selector sin salir de la pantalla
       initStudentScheduleBuilder();
+      loadStudentCourses(); // Actualizar también la lista en el dashboard principal
     } else {
       const errText = await res.text();
-      // Si el error es un string JSON con campo message, extraerlo
       let msg = errText;
       try { const obj = JSON.parse(errText); if(obj.message) msg = obj.message; } catch(e){}
       toast("No se pudo inscribir: " + msg, "error");
@@ -723,6 +762,10 @@ async function openTeacherDetailsModal(uuid, teacherName) {
       });
     }
   } catch(e) { console.error(e); }
+}
+
+function closeTeacherDetailsModal() {
+  document.getElementById("modal-teacher-details").style.display = "none";
 }
 
 async function saveTeacherDetails() {
@@ -1093,30 +1136,42 @@ async function loadStudentCourses() {
   const grid = document.getElementById("student-courses-grid");
   if (!grid) return;
 
-  grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">⏳ Cargando tus clases...</p>';
+  grid.innerHTML = '<p class="text-blue-600 text-center col-span-full py-8 animate-pulse">⏳ Cargando tus clases...</p>';
 
   // Primero resolver el studentId real del usuario logueado
   let studentId = session.email || session.id;
+  let diag = "";
+  
   try {
-    const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
+    const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
     if (sRes.ok) {
       const students = await sRes.json();
-      const me = students.find(s => s.email === session.email);
-      if (me && me.id) studentId = me.id;
-      if (me && me.studentId) studentId = me.studentId;
+      const me = Array.isArray(students) ? students.find(s => s.email === session.email) : null;
+      if (me) {
+        if (me.studentId) studentId = me.studentId;
+        else if (me.id) studentId = me.id;
+      } else {
+        diag += "[Perfil: No encontrado en lista] ";
+      }
+    } else {
+      diag += `[Perfil: Error ${sRes.status}] `;
     }
-  } catch(e) { console.warn("Fallback studentId", e); }
+  } catch(e) { 
+    console.warn("Fallback studentId", e); 
+    diag += "[Perfil: Error Red] ";
+  }
 
   try {
     // Cargar cursos matriculados + materias + profesores en paralelo
     const [coursesRes, subjectsRes, teachersRes] = await Promise.all([
-      fetch(`/api/enrollments/student/${studentId}/courses`, { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+      fetch(`/api/enrollments/student/${encodeURIComponent(studentId)}/courses`, { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message })),
+      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message })),
+      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message }))
     ]);
 
     if (!coursesRes.ok) {
-      grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes cursos inscritos en este periodo académico.</p>';
+      const errText = coursesRes.statusText || "Error desconocido";
+      grid.innerHTML = `<p class="text-gray-400 text-center col-span-full py-8">📭 No se pudieron cargar tus cursos. ${diag} (Error: ${coursesRes.status || errText})</p>`;
       return;
     }
 
@@ -1124,8 +1179,8 @@ async function loadStudentCourses() {
     const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
     const teachers = teachersRes.ok ? await teachersRes.json() : [];
 
-    if (!courses || courses.length === 0) {
-      grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes cursos inscritos en este periodo académico.</p>';
+    if (!Array.isArray(courses) || courses.length === 0) {
+      grid.innerHTML = `<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes cursos inscritos en este periodo académico. ${diag}</p>`;
       return;
     }
 
@@ -1141,9 +1196,9 @@ async function loadStudentCourses() {
 
     const htmlContent = courses.map((cg, i) => {
       const c = colors[i % colors.length];
-      const subj = subjects.find(s => s.idSubject === cg.subjectId);
+      const subj = Array.isArray(subjects) ? subjects.find(s => s.idSubject === cg.subjectId) : null;
       const subjName = subj ? subj.subjectName : (cg.subjectId || "Materia");
-      const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId);
+      const teacher = Array.isArray(teachers) ? teachers.find(t => t.id === cg.teacherId || t.teacherId === cg.teacherId || t.teacherCode === cg.teacherId) : null;
       const teacherName = teacher ? ((teacher.firstName || teacher.userName || "Prof.") + (teacher.lastName ? " " + teacher.lastName : "")) : "Por asignar";
 
       return `
@@ -1155,22 +1210,17 @@ async function loadStudentCourses() {
           <h4 class="text-lg font-bold text-gray-800 mb-2">${subjName}</h4>
           <div class="space-y-1 text-sm text-gray-600">
             <p><i class="fas fa-chalkboard-teacher ${c.icon} mr-2"></i>${teacherName}</p>
-            <p><i class="fas fa-users ${c.icon} mr-2"></i>Cupos: ${cg.capacity || "—"}</p>
+            <p><i class="fas fa-users ${c.icon} mr-2"></i>Capacidad: ${cg.capacity || "—"}</p>
           </div>
         </div>
       `;
     }).join("");
 
-    if (window.DOMPurify) {
-      grid.innerHTML = DOMPurify.sanitize(htmlContent);
-    } else {
-      console.warn("DOMPurify not loaded, using insecure innerHTML");
-      grid.innerHTML = htmlContent;
-    }
+    grid.innerHTML = htmlContent;
 
   } catch (err) {
     console.error("Error cargando cursos del estudiante:", err);
-    grid.innerHTML = `<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases: ${err.message}. Intenta recargar.</p>`;
+    grid.innerHTML = `<p class="text-red-400 text-center col-span-full py-8">❌ Error crítico cargando tus clases: ${err.message}. ${diag}</p>`;
   }
 }
 
@@ -1831,87 +1881,142 @@ document.addEventListener("click", e => {
 });
 
 // ─── STUDENT SCHEDULE BUILDER ─────────────────────────────────────────────────
-const SUBJECT_EMOJIS = ["📘","📗","📕","📙","📓","📔"];
-let   LUNCH_SLOT_LABEL = "13:00-14:00"; // se actualiza dinámicamente
-
-let studentScheduleData = {};   // { "07:00-09:00": { "Lunes": {code, subjectName, colorIdx, ...} } }
-let studentPool = [];           // [{code, subjectName, sessionsPerWeek, colorIdx, courseGroupId, teacherName}, ...]
-let studentDragSrc = null;
-let studentPolicies = null;
-let studentSubjectsMap = {};    // subjectId -> subjectInfo
 
 async function initStudentScheduleBuilder() {
+  console.log("--- Iniciando constructor de horario para estudiante ---");
   // Reset state
   studentScheduleData = {};
   studentPool = [];
   studentSubjectsMap = {};
 
-  try {
-    // Load policies
-    const pRes = await fetch('/api/policies', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
-    if (pRes.ok) studentPolicies = await pRes.json();
+  // Cargar materias disponibles para inscripción inmediatamente
+  loadAvailableCoursesForUnified();
 
-    // Generar slots dinámicamente basados en las políticas
+  try {
+    // 1. Load policies
+    try {
+      const pRes = await fetch('/api/policies', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
+      if (pRes.ok) {
+        studentPolicies = await pRes.json();
+        console.log("Políticas institucionales cargadas");
+      }
+    } catch(e) { console.warn("Error cargando políticas", e); }
+
+    // 2. Generar slots
     generateSlotsFromPolicies();
     STU_SLOTS.forEach(s => studentScheduleData[s] = {});
+    console.log(`Bloques horarios generados: ${STU_SLOTS.length}`);
 
-    // Resolve studentId
+    // 3. Resolve studentId
     let studentId = session.id;
+    console.log(`Resolviendo studentId para sesión: ${session.email || session.id}`);
     try {
-      const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
+      const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
       if (sRes.ok) {
         const students = await sRes.json();
-        const me = students.find(s => s.email === session.email);
-        if (me && me.studentId) studentId = me.studentId;
-        else if (me && me.id) studentId = me.id;
+        const me = Array.isArray(students) ? students.find(s => s.email === session.email) : null;
+        if (me) {
+          studentId = me.studentId || me.id;
+          console.log(`studentId resuelto: ${studentId}`);
+        } else {
+          console.warn("No se encontró perfil de estudiante coincidente, usando session.id");
+        }
       }
-    } catch(e) {}
+    } catch(e) { console.warn("Error resolviendo perfil estudiante", e); }
 
-    // Load enrolled courses + subjects in parallel
+    // 4. Load data in parallel
+    console.log("Solicitando cursos inscritos, materias y profesores...");
+    const headers = { 'Authorization': 'Bearer ' + rawAuth?.token };
     const [coursesRes, subjectsRes, teachersRes] = await Promise.all([
-      fetch(`/api/enrollments/student/${studentId}/courses`, { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } }),
-      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } })
+      fetch(`/api/enrollments/student/${encodeURIComponent(studentId)}/courses`, { headers, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message })),
+      fetch('/api/subjects', { headers, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message })),
+      fetch('/api/teachers', { headers, cache: 'no-store' }).catch(e => ({ ok: false, statusText: e.message }))
     ]);
 
-    const subjects = subjectsRes.ok ? await subjectsRes.json() : [];
-    const teachers = teachersRes.ok ? await teachersRes.json() : [];
-    subjects.forEach(s => studentSubjectsMap[s.idSubject] = s);
+    const subjects = subjectsRes.ok ? await subjectsRes.json().catch(() => []) : [];
+    const teachers = teachersRes.ok ? await teachersRes.json().catch(() => []) : [];
+    
+    // Actualizar cachés globales necesarios para validaciones
+    allTeachersData = teachers;
+    console.log(`Caché de profesores actualizada: ${allTeachersData.length}`);
+
+    if (Array.isArray(subjects)) {
+      subjects.forEach(s => { if(s) studentSubjectsMap[s.idSubject] = s; });
+      console.log(`Mapa de materias actualizado: ${Object.keys(studentSubjectsMap).length}`);
+    }
 
     if (coursesRes.ok) {
-      const courses = await coursesRes.json();
-      courses.forEach((cg, i) => {
-        const subj = subjects.find(s => s.idSubject === cg.subjectId);
-        const teacher = teachers.find(t => t.id === cg.teacherId || t.teacherCode === cg.teacherId);
-        const sessionsPerWeek = subj ? subj.sessionPerWeek : 2;
+      const courses = await coursesRes.json().catch(() => []);
+      console.log(`Cursos inscritos encontrados: ${courses.length}`);
+      if (Array.isArray(courses)) {
+        courses.forEach((cg, i) => {
+          if (!cg) return;
+          const subj = Array.isArray(subjects) ? subjects.find(s => s && s.idSubject === cg.subjectId) : null;
+          const teacher = Array.isArray(teachers) ? teachers.find(t => t && (t.id === cg.teacherId || t.teacherCode === cg.teacherId)) : null;
+          const sessionsPerWeek = subj ? subj.sessionPerWeek : 2;
+          const duration = subj ? subj.durationMinutes : 120;
 
-        // Each course generates N pool cards (one per required session)
-        const duration = subj ? subj.durationMinutes : 120;
-        for (let s = 0; s < sessionsPerWeek; s++) {
-          studentPool.push({
-            code: cg.subjectId, // Usar subjectId para validaciones de unicidad
-            groupCode: cg.code || "01",
-            subjectName: subj ? subj.subjectName : (cg.subjectId || 'Materia'),
-            sessionsPerWeek: sessionsPerWeek,
-            durationMinutes: duration,
-            colorIdx: i % 6,
-            courseGroupId: cg.courseGroupId,
-            teacherName: teacher ? ((teacher.firstName || '') + ' ' + (teacher.lastName || '')).trim() : 'Por asignar',
-            sessionNumber: s + 1
-          });
-        }
-      });
+          for (let s = 0; s < sessionsPerWeek; s++) {
+            studentPool.push({
+              code: cg.subjectId,
+              groupCode: cg.code || "01",
+              subjectName: subj ? subj.subjectName : (cg.subjectId || 'Materia'),
+              sessionsPerWeek: sessionsPerWeek,
+              durationMinutes: duration,
+              colorIdx: i % 6,
+              courseGroupId: cg.courseGroupId,
+              teacherName: teacher ? ((teacher.firstName || '') + ' ' + (teacher.lastName || '')).trim() : 'Por asignar',
+              sessionNumber: s + 1,
+              teacherId: cg.teacherId
+            });
+          }
+        });
+      }
+    } else {
+      console.error("Error cargando cursos inscritos", coursesRes.statusText);
     }
+    
+    console.log(`Pool de sesiones pendientes: ${studentPool.length}`);
+
+    // 5. Cargar sesiones ya guardadas
+    try {
+        const schedRes = await fetch(`/api/student-schedules/${encodeURIComponent(studentId)}`, { headers, cache: 'no-store' });
+        if (schedRes.ok) {
+            const savedSlots = await schedRes.json();
+            console.log(`Sesiones de horario guardadas: ${savedSlots.length}`);
+            if (Array.isArray(savedSlots)) {
+                savedSlots.forEach(s => {
+                    if (!s || !s.day || !s.slot) return;
+                    const dayFormatted = s.day.charAt(0) + s.day.slice(1).toLowerCase();
+                    const poolIdx = studentPool.findIndex(p => p && p.courseGroupId === s.courseGroupId);
+                    if (poolIdx !== -1) {
+                        const item = studentPool.splice(poolIdx, 1)[0];
+                        if (!studentScheduleData[s.slot]) studentScheduleData[s.slot] = {};
+                        studentScheduleData[s.slot][dayFormatted] = item;
+                    }
+                });
+            }
+        }
+    } catch(e) { console.warn("Error cargando horario guardado", e); }
+
   } catch (err) {
-    console.error("Error cargando datos del schedule builder", err);
-    toast("Error cargando datos para el horario", "error");
+    console.error("Fallo crítico en initStudentScheduleBuilder:", err);
+    toast("Error inicializando el constructor de horario", "error");
   }
 
   buildStudentPool();
   buildStudentGrid();
   updateStudentProgress();
-  loadAvailableCoursesForUnified(); // HU-20: Cargar selector unificado
+  validateEntireSchedule();
+  console.log("--- Inicialización finalizada ---");
 }
+
+window.initStudentScheduleBuilder = initStudentScheduleBuilder;
+window.loadAvailableCoursesForUnified = loadAvailableCoursesForUnified;
+window.saveEnrollmentUnified = saveEnrollmentUnified;
+window.clearStudentSchedule = clearStudentSchedule;
+window.saveStudentSchedule = saveStudentSchedule;
+window.removeStudentCard = removeStudentCard;
 
 function buildStudentPool() {
   const el = document.getElementById("student-pool-slots");
@@ -2233,7 +2338,7 @@ function generateSlotsFromPolicies() {
 
   while (cursor < classEnd) {
     // Si el cursor está justo al inicio del almuerzo, insertar bloque de almuerzo
-    if (cursor === lunchStart) {
+    if (cursor === lunchStart && lunchStart < lunchEnd) {
       slots.push(`${toLabel(lunchStart)}-${toLabel(lunchEnd)}`);
       cursor = lunchEnd;
       continue;
@@ -2249,11 +2354,14 @@ function generateSlotsFromPolicies() {
     // No exceder el fin de jornada
     if (blockEnd > classEnd) blockEnd = classEnd;
 
-    // Agregar bloque solo si tiene duración
+    // Agregar bloque solo si tiene duración y asegura el avance del cursor
     if (blockEnd > cursor) {
       slots.push(`${toLabel(cursor)}-${toLabel(blockEnd)}`);
+      cursor = blockEnd;
+    } else {
+      // Fallback para evitar bucle infinito si por alguna razón blockEnd <= cursor
+      cursor += 1; 
     }
-    cursor = blockEnd;
   }
 
   STU_SLOTS = slots;
