@@ -15,6 +15,8 @@ public class SubjectDto {
   /**
    * Constructor for SubjectDto.
    */
+  public SubjectDto() {}
+
   public SubjectDto(String idSubject, String subjectName, int sessionPerWeek, int durationMinutes) {
     this.idSubject = idSubject;
     this.subjectName = subjectName;

@@ -10,16 +10,38 @@ public class CourseGroupMapper {
 
 
   public static CourseGroupDto toDto(CourseGroup entity) {
-
     if (entity == null) {
       return null;
     }
 
     CourseGroupDto dto = new CourseGroupDto();
     dto.setCourseGroupId(entity.getCourseGroupId());
-    dto.setTeacherId(entity.getTeacher() != null ? entity.getTeacher().getId() : null);
-    dto.setSubjectId(entity.getSubject() != null ? entity.getSubject().getIdSubject() : null);
-    dto.setAcademicPeriodId(entity.getAcademicPeriod() != null ? entity.getAcademicPeriod().getPeriodId() : null);
+    
+    // Mapeo seguro de relaciones para evitar fallos en cascada
+    try {
+      if (entity.getTeacher() != null) {
+        dto.setTeacherId(entity.getTeacher().getId());
+      }
+    } catch (Exception e) {
+      dto.setTeacherId(null);
+    }
+    
+    try {
+      if (entity.getSubject() != null) {
+        dto.setSubjectId(entity.getSubject().getIdSubject());
+      }
+    } catch (Exception e) {
+      dto.setSubjectId(null);
+    }
+    
+    try {
+      if (entity.getAcademicPeriod() != null) {
+        dto.setAcademicPeriodId(entity.getAcademicPeriod().getPeriodId());
+      }
+    } catch (Exception e) {
+      dto.setAcademicPeriodId(null);
+    }
+    
     dto.setCode(entity.getCode());
     dto.setCapacity(entity.getCapacity());
     
@@ -32,7 +54,7 @@ public class CourseGroupMapper {
             .count();
       }
     } catch (Exception e) {
-      count = 0; // Fallback por si la colección no está cargada
+      count = 0; // Fallback por si la colección no está cargada o hay error de Lazy
     }
     dto.setEnrolledCount(count);
     
