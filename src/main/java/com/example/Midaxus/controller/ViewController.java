@@ -29,15 +29,6 @@ public class ViewController {
     return "login";
   }
 
-  /**
-   * Renders the registration page.
-   *
-   * @return the name of the register template
-   */
-  @GetMapping("/register")
-  public String register() {
-    return "register";
-  }
 
   /**
    * Renders the dashboard page.

@@ -9,6 +9,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,6 +49,20 @@ public class UserController {
   public ResponseEntity<Void> deleteUser(@PathVariable String id) {
     userRepos.deleteUser(id);
     return ResponseEntity.noContent().build();
+  }
+
+  /**
+   * Updates an existing user. Only admins can perform this action.
+   *
+   * @param id the ID of the user to update
+   * @param dto the user DTO with updated information
+   * @return a ResponseEntity containing the updated user DTO
+   */
+  @PutMapping("/{id}")
+  @PreAuthorize("hasRole('ADMIN')")
+  public ResponseEntity<UserDto> updateUser(
+      @PathVariable String id, @RequestBody UserDto dto) {
+    return ResponseEntity.ok(userRepos.updateUser(id, dto));
   }
 }
 

@@ -102,6 +102,7 @@ let selectedEl = null;
 
 // Global state variables
 let currentScreen = "dashboard";
+let navigationHistory = [];
 let autoRefreshTimer = null;
 let pendingDeleteAction = null;
 var _INTERNAL_USER_REGISTRY_ = []; 
@@ -190,6 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (tc) tc.style.display = session.role === "TEACHER" ? "block" : "none";
 
   buildAvailGrid();
+  initBackButtons();
   navigateTo("dashboard");
   startAutoRefresh();
 });
@@ -249,7 +251,44 @@ function startAutoRefresh() {
   }, 10000);
 }
 
-function navigateTo(id) {
+function navigateBack() {
+  if (navigationHistory.length > 0) {
+    const prevScreen = navigationHistory.pop();
+    navigateTo(prevScreen, true);
+  } else {
+    navigateTo("dashboard");
+  }
+}
+window.navigateBack = navigateBack;
+
+function initBackButtons() {
+  document.querySelectorAll('.screen').forEach(screen => {
+    if (screen.id === 'screen-dashboard') return;
+    
+    // Find the main container card of the screen
+    const container = screen.querySelector('.bg-white') || screen.querySelector('.bg-white\\/10');
+    if (container) {
+      // Check if back button already exists to prevent duplicate insertion
+      if (container.querySelector('.btn-back-wrapper')) return;
+      
+      const btnWrapper = document.createElement('div');
+      btnWrapper.className = 'mb-6 btn-back-wrapper';
+      btnWrapper.innerHTML = `
+        <button onclick="navigateBack()" class="flex items-center gap-2 px-3.5 py-2 text-sm font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 hover:text-gray-800 rounded-lg transition-all shadow-sm border border-gray-200 cursor-pointer">
+          <i class="fas fa-arrow-left"></i> Regresar
+        </button>
+      `;
+      container.insertBefore(btnWrapper, container.firstChild);
+    }
+  });
+}
+window.initBackButtons = initBackButtons;
+
+function navigateTo(id, isBack = false) {
+  if (!isBack && currentScreen && currentScreen !== id) {
+    navigationHistory.push(currentScreen);
+  }
+
   currentScreen = id;
   document.querySelectorAll(".screen").forEach(s => { s.classList.remove("active"); s.style.display="none"; });
   const tgt = document.getElementById("screen-" + id);
@@ -2876,7 +2915,7 @@ function renderAdminUsers(users) {
         <td class="p-3 border-b">
           <div class="flex items-center gap-3">
             ${teacherAction}
-            <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')" title="Editar">
+            <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="openEditUserModal('${u.uuid}', '${u.name.replace(/'/g, "\\'")}', '${u.email}', '${u.rawRole}', '${u.id}')" title="Editar">
               <i class="fas fa-user-edit"></i>
             </button>
             <button class="text-red-500 hover:text-red-700 font-medium text-sm" onclick="deleteAdminUser('${u.uuid}', '${u.name}')" title="Eliminar">
@@ -3036,6 +3075,85 @@ async function saveNewUser() {
   }
 }
 
+function openEditUserModal(uuid, name, email, role, idField) {
+  document.getElementById("edit-user-uuid").value = uuid;
+  document.getElementById("edit-user-name").value = name;
+  document.getElementById("edit-user-email").value = email;
+  document.getElementById("edit-user-role").value = role;
+  document.getElementById("edit-user-id-field").value = idField;
+  document.getElementById("edit-user-password").value = "";
+  
+  document.getElementById("modal-edit-user").style.display = "flex";
+}
+
+function closeEditUserModal() {
+  document.getElementById("modal-edit-user").style.display = "none";
+}
+
+async function saveEditedUser() {
+  const uuid = document.getElementById("edit-user-uuid").value;
+  const name = document.getElementById("edit-user-name").value.trim();
+  const email = document.getElementById("edit-user-email").value.trim();
+  const role = document.getElementById("edit-user-role").value;
+  const idField = document.getElementById("edit-user-id-field").value;
+  const password = document.getElementById("edit-user-password").value;
+  
+  if (!name || !email) {
+    toast("El nombre y el correo son obligatorios", "warning");
+    return;
+  }
+  
+  const parts = name.split(" ");
+  const firstName = parts[0];
+  const lastName = parts.slice(1).join(" ") || "";
+  
+  const payload = {
+    firstName,
+    lastName,
+    email,
+    userType: role,
+    userName: email.split("@")[0]
+  };
+  
+  if (password && password.trim().length > 0) {
+    if (password.length < 6) {
+      toast("La contraseña debe tener al menos 6 caracteres", "warning");
+      return;
+    }
+    payload.password = password;
+  }
+  
+  if (role === 'STUDENT') {
+    payload.studentId = idField;
+  } else if (role === 'TEACHER') {
+    payload.teacherCode = idField;
+  } else if (role === 'ADMIN') {
+    payload.adminId = idField;
+  }
+  
+  try {
+    const res = await fetch('/api/users/' + uuid, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + rawAuth?.token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (res.ok) {
+      toast("¡Usuario actualizado con éxito!", "success");
+      closeEditUserModal();
+      loadAdminUsers();
+    } else {
+      const err = await res.json().catch(() => ({ message: "Error desconocido" }));
+      toast(err.message || "No se pudo actualizar el usuario", "error");
+    }
+  } catch (e) {
+    toast("Error de conexión", "error");
+  }
+}
+
 window.loadAdminUsers = loadAdminUsers;
 window.openReAuthModal = openReAuthModal;
 window.closeReAuthModal = closeReAuthModal;
@@ -3043,6 +3161,9 @@ window.verifyReAuth = verifyReAuth;
 window.openCreateUserModal = openCreateUserModal;
 window.closeCreateUserModal = closeCreateUserModal;
 window.saveNewUser = saveNewUser;
+window.openEditUserModal = openEditUserModal;
+window.closeEditUserModal = closeEditUserModal;
+window.saveEditedUser = saveEditedUser;
 
 // ─── GRUPOS EN RIESGO ───
 async function openAtRiskGroupsModal() {
