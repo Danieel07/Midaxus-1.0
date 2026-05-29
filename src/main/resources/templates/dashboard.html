@@ -117,6 +117,19 @@
           </div>
         </div>
 
+        <!-- Clases de Hoy (Estudiante) -->
+        <div id="student-today-classes-section" class="bg-white rounded-lg shadow-md mt-6 p-6" style="display:none;">
+          <div class="flex items-center justify-between border-b pb-3 mb-4">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+              <i class="fas fa-calendar-day text-blue-600"></i> Clases de Hoy (<span id="student-today-name">Hoy</span>)
+            </h3>
+            <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2.5 py-0.5 rounded-full" id="student-today-count-badge">0 clases</span>
+          </div>
+          <div id="student-today-classes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Se llenará vía JS -->
+          </div>
+        </div>
+
         <!-- Cursos del Docente -->
         <div id="teacher-courses" class="bg-white rounded-lg shadow-md mt-6 p-6" style="display:none;">
           <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><i class="fas fa-chalkboard-teacher text-indigo-600"></i> Mis Clases Asignadas</h3>
