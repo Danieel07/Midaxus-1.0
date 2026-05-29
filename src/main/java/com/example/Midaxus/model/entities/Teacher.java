@@ -2,6 +2,7 @@ package com.example.midaxus.model.entities;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
@@ -28,10 +29,10 @@ public class Teacher extends User {
     joinColumns = @JoinColumn(name = "teacher_id"),
     inverseJoinColumns = @JoinColumn(name = "subject_id")
   )
-  private List<Subject> habilitatedSubjects;
+  private List<Subject> habilitatedSubjects = new ArrayList<>();
 
   @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = true)
-  private List<TeacherAvailability> availabilities;
+  private List<TeacherAvailability> availabilities = new ArrayList<>();
 
 
 

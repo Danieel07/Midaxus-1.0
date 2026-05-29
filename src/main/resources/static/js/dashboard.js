@@ -3,6 +3,9 @@
 // Requiere: auth.js ya cargado (provee getSession / clearSession)
 
 // ─── Definición de roles ──────────────────────────────────────────────────────
+const STU_DAYS  = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const STU_SLOTS_DEFAULT = ["07:00-09:00","09:00-11:00","11:00-13:00","13:00-14:00","14:00-16:00","16:00-18:00"];
+let STU_SLOTS = [...STU_SLOTS_DEFAULT];
 const ROLES = {
   ADMIN: {
     badge: "ADMIN",
@@ -97,11 +100,11 @@ let pool = [
 let dragSrc    = null;
 let selectedEl = null;
 
-// Global state variables (moved to avoid TDZ)
+// Global state variables
 let currentScreen = "dashboard";
 let autoRefreshTimer = null;
 let pendingDeleteAction = null;
-
+var _INTERNAL_USER_REGISTRY_ = []; // Final resilient name
 function decodeJWT(token) {
   try {
     return JSON.parse(atob(token.split('.')[1]));
@@ -115,31 +118,35 @@ let rawAuth = stored ? JSON.parse(stored) : null;
 let session = null;
 
 if (rawAuth && rawAuth.token) {
-  const payload = decodeJWT(rawAuth.token);
-  if (payload) {
-    session = {
-      id: payload.id || payload.userId || payload.sub || rawAuth.id || payload.email,
-      role: payload.role.replace("ROLE_", "").toUpperCase(),
-      email: payload.email,
-      name: payload.name,
-      initials: payload.name ? payload.name[0].toUpperCase() : "U"
-    };
+  try {
+    const payload = decodeJWT(rawAuth.token);
+    if (payload && payload.role) {
+      session = {
+        id: payload.id || payload.userId || payload.sub || rawAuth.id || payload.email,
+        role: (payload.role || "STUDENT").replace("ROLE_", "").toUpperCase(),
+        email: payload.email || "",
+        name: payload.name || payload.sub || "Usuario",
+        initials: payload.name ? payload.name[0].toUpperCase() : "U"
+      };
+    }
+  } catch(e) {
+    console.error("Error al decodificar sesión", e);
   }
 }
 
-if (!session) {
-  console.error("Sesión inválida o expirada");
-  window.location.href = "/login";
-  throw new Error("Abort");
-}
+// Inicialización cuando el DOM esté listo
+document.addEventListener("DOMContentLoaded", () => {
+  if (!session) {
+    console.error("Sesión inválida o expirada");
+    window.location.href = "/login";
+    return;
+  }
 
-const cfg = ROLES[session.role];
-if (!cfg) {
-  console.error("Rol no reconocido:", session.role);
-  window.location.href = "/login";
-}
+  const cfg = ROLES[session.role] || ROLES.STUDENT;
+  
   // Llenar el perfil en el Banner y Header
-  document.getElementById("user-name").textContent = session.name || session.email;
+  const userNameEl = document.getElementById("user-name");
+  if (userNameEl) userNameEl.textContent = session.name || session.email;
   
   const roleSubtitle = document.getElementById("role-subtitle");
   if(roleSubtitle) roleSubtitle.textContent = cfg.roleTitle || cfg.badge;
@@ -150,17 +157,20 @@ if (!cfg) {
   const banner = document.getElementById("profile-banner");
   if(banner) banner.className = `text-white rounded-lg shadow-md p-6 mb-6 bg-gradient-to-r ${cfg.theme || 'from-gray-600 to-gray-700'}`;
 
-  document.getElementById("btn-logout").addEventListener("click", () => {
-    if (typeof clearSession === "function") clearSession();
-    else sessionStorage.clear();
-    localStorage.removeItem("user");
-    window.location.href = "/";
-  });
+  const logoutBtn = document.getElementById("btn-logout");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      if (typeof clearSession === "function") clearSession();
+      else sessionStorage.clear();
+      localStorage.removeItem("user");
+      window.location.href = "/";
+    });
+  }
 
-  buildSidebar(cfg.menu); // Mantenido para compatibilidad o sub-navegación si aplica
+  buildSidebar(cfg.menu); 
   buildKPIs(cfg.kpis);
   buildQuickActions(cfg.quickActions);
-  loadDashboardStats(); // Cargar datos reales para los KPIs
+  loadDashboardStats(); 
 
   const sc = document.getElementById("student-courses");
   if (sc) sc.style.display = session.role === "STUDENT" ? "block" : "none";
@@ -170,6 +180,8 @@ if (!cfg) {
 
   buildAvailGrid();
   navigateTo("dashboard");
+  startAutoRefresh();
+});
 
 // Sesión de demo sin auth.js (cambia el rol para probar)
 function demoSession() {
@@ -182,16 +194,24 @@ function demoSession() {
 // ─── Navegación ───────────────────────────────────────────────────────────────
 
 // ─── Custom Confirm Modal Logic ───
-function customConfirm(title, message, onConfirm) {
+function customConfirm(title, message, onConfirm, btnText = "Confirmar", btnClass = "bg-red-600 hover:bg-red-700") {
   const modal = document.getElementById("modal-custom-confirm");
   const t = document.getElementById("confirm-title");
   const m = document.getElementById("confirm-message");
-  if (!modal || !t || !m) {
+  const b = document.getElementById("confirm-btn-ok");
+
+  if (!modal || !t || !m || !b) {
     if (confirm(`${title}\n\n${message}`)) onConfirm();
     return;
   }
+
   t.textContent = title;
   m.textContent = message;
+  b.textContent = btnText;
+  
+  // Reset classes and apply new ones
+  b.className = `w-full py-3 text-white font-bold rounded-lg shadow-lg transition-all ${btnClass}`;
+  
   pendingDeleteAction = onConfirm;
   modal.style.display = "flex";
 }
@@ -564,25 +584,29 @@ window.saveEditSubject = saveEditSubject;
 
 // ─── Delete Subject ───────────────────────────────────────────────────────────
 async function deleteSubject(id, name) {
-  if (!confirm(`¿Estás seguro de eliminar la materia "${name}" (${id})?\n\nEsta acción no se puede deshacer.`)) return;
+  customConfirm(
+    "¿Eliminar materia?",
+    `¿Estás seguro de eliminar la materia "${name}" (${id})? Esta acción no se puede deshacer y limpiará dependencias asociadas.`,
+    async () => {
+      try {
+        const res = await fetch(`/api/subjects/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+        });
 
-  try {
-    const res = await fetch(`/api/subjects/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
-    });
-
-    if (res.ok || res.status === 204) {
-      toast(`Materia "${name}" eliminada`, "success");
-      loadAdminSubjects();
-    } else {
-      const data = await res.json().catch(() => null);
-      toast(data?.message || "Error al eliminar la materia", "error");
+        if (res.ok || res.status === 204) {
+          toast(`Materia "${name}" eliminada`, "success");
+          loadAdminSubjects();
+        } else {
+          const data = await res.json().catch(() => null);
+          toast(data?.message || "Error al eliminar la materia", "error");
+        }
+      } catch (e) {
+        console.error(e);
+        toast("Error de red", "error");
+      }
     }
-  } catch (e) {
-    console.error(e);
-    toast("Error de red", "error");
-  }
+  );
 }
 window.deleteSubject = deleteSubject;
 
@@ -621,151 +645,113 @@ async function openTeacherDetailsModal(uuid, teacherName) {
   document.getElementById("edit-teacher-id").value = uuid;
   document.getElementById("edit-teacher-name").innerText = teacherName;
   
-  const availList = document.getElementById("teacher-availability-list");
+  const matrix = document.getElementById("teacher-avail-matrix");
   const compBox = document.getElementById("teacher-competences-list");
   
-  if(availList) availList.innerHTML = "";
-  if(compBox) compBox.innerHTML = "<p class='text-sm text-gray-500 animate-pulse'>Cargando competencias...</p>";
-  
+  if(matrix) {
+    // Reset Matrix with headers (Extremely robust approach)
+    matrix.innerHTML = `
+      <div class="bg-gray-100 py-2 border-b border-r border-gray-200"></div>
+      <div class="bg-gray-100 py-2 border-b border-r border-gray-200 text-[10px] font-bold text-gray-600">LUN</div>
+      <div class="bg-gray-100 py-2 border-b border-r border-gray-200 text-[10px] font-bold text-gray-600">MAR</div>
+      <div class="bg-gray-100 py-2 border-b border-r border-gray-200 text-[10px] font-bold text-gray-600">MIE</div>
+      <div class="bg-gray-100 py-2 border-b border-r border-gray-200 text-[10px] font-bold text-gray-600">JUE</div>
+      <div class="bg-gray-100 py-2 border-b border-r border-gray-200 text-[10px] font-bold text-gray-600">VIE</div>
+      <div class="bg-gray-100 py-2 border-b border-gray-200 text-[10px] font-bold text-gray-600">SAB</div>
+    `;
+    
+    // Generar filas usando las constantes globales
+    STU_SLOTS_DEFAULT.forEach(slot => {
+      const timeLabel = document.createElement("div");
+      timeLabel.className = "bg-white py-3 border-b border-r border-gray-200 text-[9px] font-bold text-gray-400 flex items-center justify-center";
+      timeLabel.textContent = slot;
+      matrix.appendChild(timeLabel);
+      
+      STU_DAYS.forEach(day => {
+        const cell = document.createElement("div");
+        cell.className = "avail-matrix-cell bg-white border-b border-r border-gray-100 hover:bg-indigo-50 cursor-pointer transition-all h-10";
+        cell.dataset.slot = slot;
+        cell.dataset.day = day.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        cell.onclick = () => cell.classList.toggle("is-available");
+        matrix.appendChild(cell);
+      });
+    });
+  }
+
+  if(compBox) compBox.innerHTML = "<p class='text-sm text-gray-500 animate-pulse text-center py-4 w-full'>Cargando...</p>";
   document.getElementById("modal-teacher-details").style.display = "flex";
   
   try {
-    // 1. Cargar catálogo de materias si no está en caché
     if (allSubjectsCache.length === 0) {
       const sRes = await fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
       if (sRes.ok) allSubjectsCache = await sRes.json();
     }
     
-    // 2. Cargar datos específicos del profesor (Competencias y Disponibilidad)
-    // Buscamos en la lista completa o podríamos tener un endpoint GET /api/teachers/{id}
     const tRes = await fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
-    if (!tRes.ok) throw new Error("Error al obtener docentes");
-    
-    const teachers = await tRes.json();
+    const teachers = tRes.ok ? await tRes.json() : [];
     const teacher = teachers.find(t => t.id === uuid || t.teacherCode === uuid);
     
     if (!teacher) {
-      toast("No se encontró la información del docente", "error");
+      toast("No se encontró al docente", "error");
       return;
     }
     
-    // 3. Renderizar Competencias (Checkboxes)
     compBox.innerHTML = "";
     allSubjectsCache.forEach(subj => {
       const isChecked = teacher.subjectsIds && teacher.subjectsIds.includes(subj.idSubject) ? "checked" : "";
       compBox.innerHTML += `
-        <label class="flex items-center gap-3 p-2 bg-white border border-gray-100 rounded-lg cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-all">
-          <input type="checkbox" class="subj-checkbox w-4 h-4 text-indigo-600 rounded" value="${subj.idSubject}" ${isChecked}>
+        <label class="flex items-center gap-3 p-3 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-indigo-400 transition-all">
+          <input type="checkbox" class="subj-checkbox w-4 h-4 text-indigo-600 rounded border-gray-300" value="${subj.idSubject}" ${isChecked}>
           <div class="flex flex-col">
-            <span class="text-xs font-bold text-indigo-500">${subj.idSubject}</span>
-            <span class="text-sm text-gray-700">${subj.subjectName}</span>
+            <span class="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">${subj.idSubject}</span>
+            <span class="text-xs font-bold text-gray-700 leading-tight">${subj.subjectName}</span>
           </div>
         </label>
       `;
     });
     
-    // 4. Renderizar Disponibilidades
-    if (teacher.availabilities && availList) {
+    if (teacher.availabilities) {
       teacher.availabilities.forEach(av => {
-        addTeacherAvailabilityRowDirect(av.dayOfWeek, av.startTime.substring(0,5), av.endTime.substring(0,5));
+        const day = av.dayOfWeek.toUpperCase();
+        const start = av.startTime.substring(0,5);
+        const cell = Array.from(document.querySelectorAll(".avail-matrix-cell")).find(c => 
+          c.dataset.day === day && c.dataset.slot.startsWith(start)
+        );
+        if(cell) cell.classList.add("is-available");
       });
     }
-    
-  } catch(e) { 
-    console.error(e);
-    toast("Fallo al cargar perfil docente", "error");
-  }
-}
-
-function closeTeacherDetailsModal() {
-  document.getElementById("modal-teacher-details").style.display = "none";
-}
-
-function addTeacherAvailabilityRow() {
-  const day = document.getElementById("new-avail-day").value;
-  const start = document.getElementById("new-avail-start").value;
-  const end = document.getElementById("new-avail-end").value;
-  
-  if(!start || !end) {
-    toast("Selecciona hora de inicio y fin", "error");
-    return;
-  }
-  
-  // Validar formato y lógica
-  if(start >= end) {
-    toast("La hora de inicio debe ser anterior a la de fin", "error");
-    return;
-  }
-  
-  addTeacherAvailabilityRowDirect(day, start, end);
-}
-
-function addTeacherAvailabilityRowDirect(day, start, end) {
-  const ul = document.getElementById("teacher-availability-list");
-  if (!ul) return;
-  
-  const li = document.createElement("li");
-  li.className = "flex justify-between items-center bg-white p-3 border border-gray-100 rounded-lg shadow-sm avail-item hover:border-indigo-200 transition-all";
-  li.innerHTML = `
-    <div class="flex items-center gap-4">
-      <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded uppercase avail-day w-24 text-center">${day}</span>
-      <span class="text-gray-600 font-mono text-sm"><span class="avail-start font-bold">${start}</span> - <span class="avail-end font-bold">${end}</span></span>
-    </div>
-    <button type="button" class="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all" onclick="this.parentElement.remove()">
-      <i class="fas fa-trash-alt"></i>
-    </button>
-  `;
-  ul.appendChild(li);
+  } catch(e) { console.error(e); }
 }
 
 async function saveTeacherDetails() {
   const uuid = document.getElementById("edit-teacher-id").value;
+  const subjectsIds = Array.from(document.querySelectorAll(".subj-checkbox:checked")).map(cb => cb.value);
   
-  // 1. Obtener materias seleccionadas
-  const checkboxes = document.querySelectorAll(".subj-checkbox:checked");
-  const subjectsIds = Array.from(checkboxes).map(cb => cb.value);
-  
-  // 2. Obtener disponibilidades
-  const availItems = document.querySelectorAll(".avail-item");
-  const availabilities = Array.from(availItems).map(item => {
-    return {
-      dayOfWeek: item.querySelector(".avail-day").innerText,
-      startTime: item.querySelector(".avail-start").innerText + ":00",
-      endTime: item.querySelector(".avail-end").innerText + ":00"
-    };
+  const availabilities = Array.from(document.querySelectorAll(".avail-matrix-cell.is-available")).map(cell => {
+    const [start, end] = cell.dataset.slot.split("-");
+    return { dayOfWeek: cell.dataset.day, startTime: start + ":00", endTime: end + ":00" };
   });
-  
-  const payload = {
-    subjectsIds,
-    availabilities
-  };
   
   try {
     const res = await fetch('/api/teachers/' + uuid, {
       method: 'PUT',
-      headers: {
-        'Authorization': 'Bearer ' + rawAuth?.token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+      headers: { 'Authorization': 'Bearer ' + rawAuth?.token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subjectsIds, availabilities })
     });
-    
     if (res.ok) {
-      toast("Restricciones y competencias guardadas ✓", "success");
+      toast("Perfil actualizado ✓", "success");
       closeTeacherDetailsModal();
-      loadAdminUsers(); // Refrescar lista de usuarios
+      loadAdminUsers();
+      // Force reload of teachers cache for enrollment validations
+      const tRes = await fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
+      if(tRes.ok) allTeachersData = await tRes.json();
     } else {
-      const err = await res.json().catch(()=>({}));
-      toast(err.message || "Error al actualizar perfil", "error");
+      toast("Error al actualizar", "error");
     }
-  } catch(e) {
-    console.error(e);
-    toast("Error de red", "error");
-  }
+  } catch(e) { toast("Error de red", "error"); }
 }
 window.openTeacherDetailsModal = openTeacherDetailsModal;
 window.closeTeacherDetailsModal = closeTeacherDetailsModal;
-window.addTeacherAvailabilityRow = addTeacherAvailabilityRow;
 window.saveTeacherDetails = saveTeacherDetails;
 
 // ─── Admin Courses ───
@@ -1762,13 +1748,19 @@ function hideInspector() {
 
 function removeCard(slot, day) {
   const s = scheduleData[slot]?.[day];
-  if (!s || !confirm(`Remove ${s.code} from ${day} ${slot}?`)) return;
-  pool.push(s);
-  delete scheduleData[slot][day];
-  hideInspector();
-  toast(`${s.code} removed`, "info");
-  buildScheduleGrid(true);
-  buildPool();
+  if (!s) return;
+  customConfirm(
+    "¿Quitar sesión?",
+    `¿Deseas remover "${s.code}" de ${day} a las ${slot}? Se enviará al pool de materias sin asignar.`,
+    () => {
+      pool.push(s);
+      delete scheduleData[slot][day];
+      hideInspector();
+      toast(`${s.code} removido`, "info");
+      buildScheduleGrid(true);
+      buildPool();
+    }
+  );
 }
 window.removeCard = removeCard;
 
@@ -1777,8 +1769,6 @@ document.addEventListener("click", e => {
 });
 
 // ─── STUDENT SCHEDULE BUILDER ─────────────────────────────────────────────────
-const STU_DAYS  = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-let   STU_SLOTS = ["07:00-09:00","09:00-11:00","11:00-13:00","13:00-14:00","14:00-16:00","16:00-18:00"]; // default, se recalcula
 const SUBJECT_EMOJIS = ["📘","📗","📕","📙","📓","📔"];
 let   LUNCH_SLOT_LABEL = "13:00-14:00"; // se actualiza dinámicamente
 
@@ -2086,59 +2076,60 @@ window.removeStudentCard = removeStudentCard;
 // ── VALIDATION ──
 
 function validateStudentPlacement(item, toDay, toSlot, fromDay) {
-  // 1. Lunch block
-  if (isLunchSlot(toSlot)) {
-    return { valid: false, message: "No se pueden programar clases en el bloque de almuerzo" };
-  }
+  // 1. Almuerzo
+  if (isLunchSlot(toSlot)) return { valid: false, message: "Bloque de almuerzo no disponible" };
 
-  // 2. Consecutive days check
-  const toDayIdx = STU_DAYS.indexOf(toDay);
-  const scheduledDays = [];
-  
-  for (const sl in studentScheduleData) {
-    for (const d in studentScheduleData[sl]) {
-      if (d === fromDay) continue; // skip origin
-      const entry = studentScheduleData[sl][d];
-      if (entry && entry.code === item.code && !scheduledDays.includes(d)) {
-        scheduledDays.push(d);
-      }
-    }
-  }
+  // 2. Disponibilidad del Profesor (ESTRICTO)
+  const teacher = allTeachersData.find(t => t.id === item.teacherId || t.teacherCode === item.teacherId);
+  if (teacher && teacher.availabilities) {
+    const dayUpper = toDay.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const [slotStart] = toSlot.split("-");
+    
+    const isAvailable = teacher.availabilities.some(av => {
+      return av.dayOfWeek.toUpperCase() === dayUpper && 
+             av.startTime.substring(0,5) === slotStart;
+    });
 
-  for (const d of scheduledDays) {
-    const dIdx = STU_DAYS.indexOf(d);
-    if (Math.abs(dIdx - toDayIdx) === 1) {
-      return {
-        valid: false,
-        message: `No puedes colocar "${item.subjectName}" en ${toDay} porque ya está en ${d} (días consecutivos)`
+    if (!isAvailable) {
+      return { 
+        valid: false, 
+        message: `El profesor ${item.teacherName || 'asignado'} no tiene disponibilidad el ${toDay} a las ${toSlot}.` 
       };
     }
   }
 
-  // 3. Same day - same subject check (can't have same subject twice on same day)
+  // 3. Días consecutivos
+  const toDayIdx = STU_DAYS.indexOf(toDay);
+  const scheduledDays = [];
+  for (const sl in studentScheduleData) {
+    for (const d in studentScheduleData[sl]) {
+      if (d === fromDay) continue;
+      const entry = studentScheduleData[sl][d];
+      if (entry && entry.code === item.code && !scheduledDays.includes(d)) scheduledDays.push(d);
+    }
+  }
+  for (const d of scheduledDays) {
+    const dIdx = STU_DAYS.indexOf(d);
+    if (Math.abs(dIdx - toDayIdx) === 1) {
+      return { valid: false, message: `Días consecutivos no permitidos para ${item.subjectName}` };
+    }
+  }
+
+  // 4. Misma materia mismo día
   for (const sl in studentScheduleData) {
     if (sl === toSlot) continue;
     const entry = studentScheduleData[sl]?.[toDay];
     if (entry && entry.code === item.code) {
-      // Skip if it's the origin cell being moved
-      if (fromDay === toDay && studentScheduleData[studentDragSrc?.slot]?.[studentDragSrc?.day]?.code === item.code) {
-        continue;
-      }
-      return {
-        valid: false,
-        message: `"${item.subjectName}" ya está asignada el ${toDay} en otro bloque`
-      };
+        if (fromDay === toDay && studentScheduleData[studentDragSrc?.slot]?.[studentDragSrc?.day]?.code === item.code) continue;
+        return { valid: false, message: `"${item.subjectName}" ya está asignada este día` };
     }
   }
 
-  // 4. Max sessions per week per subject
+  // 5. Límite sesiones semanales
   if (studentPolicies?.maxSessionsPerWeek) {
     let totalSessions = scheduledDays.length + 1;
     if (totalSessions > studentPolicies.maxSessionsPerWeek) {
-      return {
-        valid: false,
-        message: `Se supera el límite de ${studentPolicies.maxSessionsPerWeek} sesiones semanales para "${item.subjectName}"`
-      };
+      return { valid: false, message: `Límite de ${studentPolicies.maxSessionsPerWeek} sesiones semanales superado` };
     }
   }
 
@@ -2299,85 +2290,91 @@ function updateStudentProgress() {
 }
 
 function clearStudentSchedule() {
-  if (!confirm("¿Estás seguro de limpiar todo el horario?")) return;
-  
-  for (const slot in studentScheduleData) {
-    for (const day in studentScheduleData[slot]) {
-      if (studentScheduleData[slot][day]) {
-        studentPool.push(studentScheduleData[slot][day]);
-        delete studentScheduleData[slot][day];
+  customConfirm(
+    "¿Limpiar horario?",
+    "¿Estás seguro de que deseas quitar todas las materias asignadas de tu horario actual?",
+    () => {
+      for (const slot in studentScheduleData) {
+        for (const day in studentScheduleData[slot]) {
+          if (studentScheduleData[slot][day]) {
+            studentPool.push(studentScheduleData[slot][day]);
+            delete studentScheduleData[slot][day];
+          }
+        }
       }
+      buildStudentPool();
+      buildStudentGrid();
+      updateStudentProgress();
+      validateEntireSchedule();
+      toast("Horario limpiado", "info");
     }
-  }
-  buildStudentPool();
-  buildStudentGrid();
-  updateStudentProgress();
-  validateEntireSchedule();
-  toast("Horario limpiado", "info");
+  );
 }
 window.clearStudentSchedule = clearStudentSchedule;
 
 async function saveStudentSchedule() {
-  // Check if schedule is complete
-  if (studentPool.length > 0) {
-    if (!confirm("Aún tienes materias sin asignar. ¿Deseas guardar el horario parcial?")) return;
-  }
-
-  const entries = [];
-  for (const slot in studentScheduleData) {
-    for (const day in studentScheduleData[slot]) {
-      const entry = studentScheduleData[slot][day];
-      if (entry) {
-        // Enviar solo días en mayúsculas para el Enum
-        const dayEnum = day.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        entries.push({
-          courseGroupId: entry.courseGroupId,
-          courseCode: entry.code,
-          day: dayEnum,
-          slot: slot,
-          subjectName: entry.subjectName
-        });
+  const processSave = async () => {
+    const entries = [];
+    for (const slot in studentScheduleData) {
+      for (const day in studentScheduleData[slot]) {
+        const entry = studentScheduleData[slot][day];
+        if (entry) {
+          const dayEnum = day.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          entries.push({
+            courseGroupId: entry.courseGroupId,
+            courseCode: entry.code,
+            day: dayEnum,
+            slot: slot,
+            subjectName: entry.subjectName
+          });
+        }
       }
     }
-  }
 
-  if (entries.length === 0) {
-    toast("No hay sesiones para guardar", "error");
-    return;
-  }
+    if (entries.length === 0) {
+      toast("No hay sesiones para guardar", "error");
+      return;
+    }
 
-  // Fetch student UUID
-  let studentId = session.email || session.id;
-  try {
-      const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
-      if (sRes.ok) {
-         const students = await sRes.json();
-         const me = students.find(s => s.email === session.email);
-         if (me && me.id) studentId = me.id;
-         if (me && me.studentId) studentId = me.studentId;
-      }
-  } catch(e) {
-      console.warn("Error resolviendo student ID", e);
-  }
+    let studentId = session.email || session.id;
+    try {
+        const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
+        if (sRes.ok) {
+           const students = await sRes.json();
+           const me = students.find(s => s.email === session.email);
+           if (me && me.id) studentId = me.id;
+           if (me && me.studentId) studentId = me.studentId;
+        }
+    } catch(e) {}
 
-  try {
-      const res = await fetch(`/api/student-schedules/${studentId}`, {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer ' + rawAuth?.token
-          },
-          body: JSON.stringify(entries)
-      });
-      
-      if (res.ok) {
-          toast(`Horario guardado con ${entries.length} sesiones ✓`, "success");
-      } else {
-          toast("Error al guardar el horario en la base de datos", "error");
-      }
-  } catch (err) {
-      console.error(err);
-      toast("Error de red", "error");
+    try {
+        const res = await fetch(`/api/student-schedules/${studentId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + rawAuth?.token
+            },
+            body: JSON.stringify(entries)
+        });
+        
+        if (res.ok) {
+            toast(`Horario guardado con ${entries.length} sesiones ✓`, "success");
+        } else {
+            toast("Error al guardar el horario", "error");
+        }
+    } catch (err) {
+        toast("Error de red", "error");
+    }
+  };
+
+  if (studentPool.length > 0) {
+    customConfirm(
+      "Horario incompleto",
+      "Aún tienes materias sin asignar en tu pool. ¿Deseas guardar el horario parcial?",
+      processSave
+    );
+  } else {
+    processSave();
   }
 }
 window.saveStudentSchedule = saveStudentSchedule;
@@ -2607,33 +2604,75 @@ window.loadClassStudentsForAttendance = loadClassStudentsForAttendance;
 window.markStudentAttendance = markStudentAttendance;
 
 // ─── UNIFIED USER MANAGEMENT ───
-let allUsersCache = [];
-
 async function loadAdminUsers() {
   const tbody = document.getElementById("admin-users-table-body");
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-purple-600 animate-pulse">Cargando usuarios...</td></tr>';
 
+  let teachers = [];
+  let students = [];
+  let diag = "";
+
+  // 1. Fetch Profesores de forma aislada
   try {
-    const [teachersRes, studentsRes] = await Promise.all([
-      fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' }),
-      fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' })
-    ]);
+    const tRes = await fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
+    if (tRes.ok) {
+      const data = await tRes.json();
+      teachers = Array.isArray(data) ? data : [];
+    } else {
+      diag += `[Profesores: Error ${tRes.status}] `;
+    }
+  } catch (e) { 
+    console.error(e); 
+    diag += `[Profesores: Error Red] `;
+  }
 
-    const teachers = teachersRes.ok ? await teachersRes.json() : [];
-    const students = studentsRes.ok ? await studentsRes.json() : [];
+  // 2. Fetch Estudiantes de forma aislada
+  try {
+    const sRes = await fetch('/api/students', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
+    if (sRes.ok) {
+      const data = await sRes.json();
+      students = Array.isArray(data) ? data : [];
+    } else {
+      diag += `[Estudiantes: Error ${sRes.status}] `;
+    }
+  } catch (e) { 
+    console.error(e); 
+    diag += `[Estudiantes: Error Red] `;
+  }
 
-    // Consolidar lista
-    allUsersCache = [
-      ...teachers.map(t => ({ id: t.teacherCode || t.id, name: `${t.firstName} ${t.lastName}`, email: t.email, role: 'PROFESOR', rawRole: 'TEACHER', uuid: t.id })),
-      ...students.map(s => ({ id: s.studentId || s.id, name: `${s.firstName} ${s.lastName}`, email: s.email, role: 'ESTUDIANTE', rawRole: 'STUDENT', uuid: s.id }))
-    ];
+  try {
+    // Consolidar lista de forma ultra-segura
+    const safeMap = (raw, role, rawRole) => {
+      try {
+        if (!raw) return null;
+        return { 
+          id: String(raw.teacherCode || raw.studentId || raw.id || "N/A"), 
+          name: `${raw.firstName || ''} ${raw.lastName || ''}`.trim() || raw.userName || "Sin Nombre", 
+          email: String(raw.email || "S/C"), 
+          role: role, 
+          rawRole: rawRole, 
+          uuid: String(raw.id || '') 
+        };
+      } catch (e) { return null; }
+    };
 
-    renderAdminUsers(allUsersCache);
+    _INTERNAL_USER_REGISTRY_ = [
+      ...(Array.isArray(teachers) ? teachers : []).map(t => safeMap(t, 'PROFESOR', 'TEACHER')),
+      ...(Array.isArray(students) ? students : []).map(s => safeMap(s, 'ESTUDIANTE', 'STUDENT'))
+    ].filter(u => u !== null);
+
+    if (_INTERNAL_USER_REGISTRY_.length === 0) {
+      const msg = diag !== "" ? `Error de carga: ${diag}` : "No se encontraron usuarios.";
+      tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">${msg}</td></tr>`;
+    } else {
+      renderAdminUsers(_INTERNAL_USER_REGISTRY_);
+      if (diag !== "") toast(`Aviso: ${diag}`, "warning");
+    }
 
   } catch (err) {
-    console.error("Error loading users", err);
-    tbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-red-500">Error al cargar usuarios.</td></tr>';
+    console.error("Error procesando usuarios", err);
+    tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-red-500 text-xs text-left"><pre>${err.message}\n${err.stack}</pre></td></tr>`;
   }
 }
 
@@ -2712,7 +2751,7 @@ window.deleteAdminUser = deleteAdminUser;
 
 function filterUsersById() {
   const filterValue = document.getElementById("user-filter-id").value.toLowerCase();
-  const filtered = allUsersCache.filter(u => u.id.toLowerCase().includes(filterValue));
+  const filtered = _INTERNAL_USER_REGISTRY_.filter(u => u.id.toLowerCase().includes(filterValue));
   renderAdminUsers(filtered);
 }
 window.filterUsersById = filterUsersById;
@@ -2895,24 +2934,28 @@ function closeAtRiskGroupsModal() {
 }
 
 async function processGroupClosure(id, name) {
-  if (!confirm(`¿Estás seguro de que deseas cerrar el grupo de "${name}"? \n\nEsta acción marcará el grupo como cerrado y deberás reasignar a los estudiantes manualmente.`)) return;
+  customConfirm(
+    "¿Cerrar grupo?",
+    `¿Estás seguro de que deseas cerrar el grupo de "${name}"? Esta acción marcará el grupo como cerrado y deberás reasignar a los estudiantes manualmente.`,
+    async () => {
+      try {
+        const res = await fetch(`/api/course-groups/${id}/close`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
+        });
 
-  try {
-    const res = await fetch(`/api/course-groups/${id}/close`, {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + rawAuth?.token }
-    });
-
-    if (res.ok) {
-      toast(`Grupo de "${name}" cerrado exitosamente.`, "success");
-      openAtRiskGroupsModal(); // Refrescar modal
-      loadAdminCourses();    // Refrescar tabla principal
-    } else {
-      toast("Error al cerrar el grupo.", "error");
+        if (res.ok) {
+          toast(`Grupo de "${name}" cerrado exitosamente.`, "success");
+          openAtRiskGroupsModal(); // Refrescar modal
+          loadAdminCourses();    // Refrescar tabla principal
+        } else {
+          toast("Error al cerrar el grupo.", "error");
+        }
+      } catch (err) {
+        toast("Error de red.", "error");
+      }
     }
-  } catch (err) {
-    toast("Error de red.", "error");
-  }
+  );
 }
 
 window.openAtRiskGroupsModal = openAtRiskGroupsModal;
