@@ -252,32 +252,35 @@ public class CourseGroupService implements ICourseGroup<CourseGroupDto, String> 
    */
   @Override
   public List<CourseGroupDto> getCoursesByStudent(String studentId) {
-    // Intentar buscar por studentId primero
+    if (studentId == null || studentId.isEmpty()) return List.of();
+
+    // 1. Intentar buscar inscripciones donde el studentId de la entidad coincida directamente
     List<Enrollment> enrollments = enrollmentRepository
         .findByStudent_StudentIdAndStatus(studentId, EnrollmentStatus.ENROLLED);
 
-    // Si no encontró nada, intentar buscar al estudiante por su UUID (id de User)
+    // 2. Si no hay resultados, intentar buscar al estudiante por cualquier campo y luego sus inscripciones
     if (enrollments.isEmpty()) {
-      Student student = studentRepository.findById(studentId).orElse(null);
-      if (student != null && student.getStudentId() != null) {
-        enrollments = enrollmentRepository
-            .findByStudent_StudentIdAndStatus(student.getStudentId(), EnrollmentStatus.ENROLLED);
-      }
-    }
+      Student student = studentRepository.findById(studentId)
+          .orElseGet(() -> studentRepository.findByStudentId(studentId)
+          .orElseGet(() -> studentRepository.findByEmail(studentId)
+          .orElse(null)));
 
-    // Si aún no encontró nada, intentar buscar por email (fallback final)
-    if (enrollments.isEmpty()) {
-      Student student = studentRepository.findAll().stream()
-          .filter(s -> s.getEmail() != null && s.getEmail().equals(studentId))
-          .findFirst()
-          .orElse(null);
-      if (student != null && student.getStudentId() != null) {
-        enrollments = enrollmentRepository
-            .findByStudent_StudentIdAndStatus(student.getStudentId(), EnrollmentStatus.ENROLLED);
+      if (student != null) {
+        // Buscar por el UUID interno
+        enrollments = enrollmentRepository.findAllByStudent(student).stream()
+            .filter(e -> e.getStatus() == EnrollmentStatus.ENROLLED)
+            .toList();
+            
+        // Si sigue vacío pero tiene studentId de negocio, intentar por ese
+        if (enrollments.isEmpty() && student.getStudentId() != null) {
+          enrollments = enrollmentRepository
+              .findByStudent_StudentIdAndStatus(student.getStudentId(), EnrollmentStatus.ENROLLED);
+        }
       }
     }
 
     return enrollments.stream()
+        .filter(e -> e != null && e.getCourseGroup() != null)
         .map(Enrollment::getCourseGroup)
         .map(CourseGroupMapper::toDto)
         .toList();
