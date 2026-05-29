@@ -617,51 +617,64 @@ async function loadAdminTeachers() {
   } catch(e) { console.error(e); }
 }
 
-async function openTeacherDetailsModal(teacherCode, teacherName) {
-  document.getElementById("edit-teacher-id").value = teacherCode;
+async function openTeacherDetailsModal(uuid, teacherName) {
+  document.getElementById("edit-teacher-id").value = uuid;
   document.getElementById("edit-teacher-name").innerText = teacherName;
   
-  document.getElementById("teacher-availability-list").innerHTML = "";
-  document.getElementById("teacher-competences-list").innerHTML = "<p class='text-sm text-gray-500'>Cargando...</p>";
+  const availList = document.getElementById("teacher-availability-list");
+  const compBox = document.getElementById("teacher-competences-list");
+  
+  if(availList) availList.innerHTML = "";
+  if(compBox) compBox.innerHTML = "<p class='text-sm text-gray-500 animate-pulse'>Cargando competencias...</p>";
   
   document.getElementById("modal-teacher-details").style.display = "flex";
   
   try {
+    // 1. Cargar catálogo de materias si no está en caché
     if (allSubjectsCache.length === 0) {
       const sRes = await fetch('/api/subjects', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
       if (sRes.ok) allSubjectsCache = await sRes.json();
     }
     
+    // 2. Cargar datos específicos del profesor (Competencias y Disponibilidad)
+    // Buscamos en la lista completa o podríamos tener un endpoint GET /api/teachers/{id}
     const tRes = await fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
-    let teacher = null;
-    if (tRes.ok) {
-      const teachers = await tRes.json();
-      teacher = teachers.find(t => t.teacherCode === teacherCode);
+    if (!tRes.ok) throw new Error("Error al obtener docentes");
+    
+    const teachers = await tRes.json();
+    const teacher = teachers.find(t => t.id === uuid || t.teacherCode === uuid);
+    
+    if (!teacher) {
+      toast("No se encontró la información del docente", "error");
+      return;
     }
     
-    if (!teacher) return;
-    
-    // Render Competences (Checkboxes)
-    const compBox = document.getElementById("teacher-competences-list");
+    // 3. Renderizar Competencias (Checkboxes)
     compBox.innerHTML = "";
     allSubjectsCache.forEach(subj => {
       const isChecked = teacher.subjectsIds && teacher.subjectsIds.includes(subj.idSubject) ? "checked" : "";
       compBox.innerHTML += `
-        <label class="flex items-center gap-2 text-sm bg-white p-2 border rounded cursor-pointer hover:bg-gray-50">
-          <input type="checkbox" class="subj-checkbox" value="${subj.idSubject}" ${isChecked}>
-          <span class="font-mono text-xs text-gray-500">${subj.idSubject}</span> ${subj.subjectName}
+        <label class="flex items-center gap-3 p-2 bg-white border border-gray-100 rounded-lg cursor-pointer hover:bg-indigo-50 hover:border-indigo-200 transition-all">
+          <input type="checkbox" class="subj-checkbox w-4 h-4 text-indigo-600 rounded" value="${subj.idSubject}" ${isChecked}>
+          <div class="flex flex-col">
+            <span class="text-xs font-bold text-indigo-500">${subj.idSubject}</span>
+            <span class="text-sm text-gray-700">${subj.subjectName}</span>
+          </div>
         </label>
       `;
     });
     
-    // Render Availabilities
-    if (teacher.availabilities) {
+    // 4. Renderizar Disponibilidades
+    if (teacher.availabilities && availList) {
       teacher.availabilities.forEach(av => {
         addTeacherAvailabilityRowDirect(av.dayOfWeek, av.startTime.substring(0,5), av.endTime.substring(0,5));
       });
     }
     
-  } catch(e) { console.error(e); }
+  } catch(e) { 
+    console.error(e);
+    toast("Fallo al cargar perfil docente", "error");
+  }
 }
 
 function closeTeacherDetailsModal() {
@@ -677,8 +690,10 @@ function addTeacherAvailabilityRow() {
     toast("Selecciona hora de inicio y fin", "error");
     return;
   }
+  
+  // Validar formato y lógica
   if(start >= end) {
-    toast("La hora de inicio debe ser menor a la hora de fin", "error");
+    toast("La hora de inicio debe ser anterior a la de fin", "error");
     return;
   }
   
@@ -687,26 +702,30 @@ function addTeacherAvailabilityRow() {
 
 function addTeacherAvailabilityRowDirect(day, start, end) {
   const ul = document.getElementById("teacher-availability-list");
+  if (!ul) return;
+  
   const li = document.createElement("li");
-  li.className = "flex justify-between items-center bg-white p-2 border rounded text-sm avail-item";
+  li.className = "flex justify-between items-center bg-white p-3 border border-gray-100 rounded-lg shadow-sm avail-item hover:border-indigo-200 transition-all";
   li.innerHTML = `
-    <span class="font-medium text-gray-700 avail-day w-24">${day}</span>
-    <span class="text-gray-600 avail-time"><span class="avail-start">${start}</span> - <span class="avail-end">${end}</span></span>
-    <button type="button" class="text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
-      <i class="fas fa-trash"></i>
+    <div class="flex items-center gap-4">
+      <span class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded uppercase avail-day w-24 text-center">${day}</span>
+      <span class="text-gray-600 font-mono text-sm"><span class="avail-start font-bold">${start}</span> - <span class="avail-end font-bold">${end}</span></span>
+    </div>
+    <button type="button" class="w-8 h-8 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all" onclick="this.parentElement.remove()">
+      <i class="fas fa-trash-alt"></i>
     </button>
   `;
   ul.appendChild(li);
 }
 
 async function saveTeacherDetails() {
-  const teacherId = document.getElementById("edit-teacher-id").value;
+  const uuid = document.getElementById("edit-teacher-id").value;
   
-  // Get checked subjects
+  // 1. Obtener materias seleccionadas
   const checkboxes = document.querySelectorAll(".subj-checkbox:checked");
   const subjectsIds = Array.from(checkboxes).map(cb => cb.value);
   
-  // Get availabilities
+  // 2. Obtener disponibilidades
   const availItems = document.querySelectorAll(".avail-item");
   const availabilities = Array.from(availItems).map(item => {
     return {
@@ -722,7 +741,7 @@ async function saveTeacherDetails() {
   };
   
   try {
-    const res = await fetch('/api/teachers/' + teacherId, {
+    const res = await fetch('/api/teachers/' + uuid, {
       method: 'PUT',
       headers: {
         'Authorization': 'Bearer ' + rawAuth?.token,
@@ -732,17 +751,22 @@ async function saveTeacherDetails() {
     });
     
     if (res.ok) {
-      toast("Perfil docente actualizado", "success");
+      toast("Restricciones y competencias guardadas ✓", "success");
       closeTeacherDetailsModal();
-      loadAdminTeachers();
+      loadAdminUsers(); // Refrescar lista de usuarios
     } else {
-      toast("Error al actualizar perfil", "error");
+      const err = await res.json().catch(()=>({}));
+      toast(err.message || "Error al actualizar perfil", "error");
     }
   } catch(e) {
     console.error(e);
     toast("Error de red", "error");
   }
 }
+window.openTeacherDetailsModal = openTeacherDetailsModal;
+window.closeTeacherDetailsModal = closeTeacherDetailsModal;
+window.addTeacherAvailabilityRow = addTeacherAvailabilityRow;
+window.saveTeacherDetails = saveTeacherDetails;
 
 // ─── Admin Courses ───
 let adminCoursesData = [];
@@ -1016,7 +1040,7 @@ async function saveEnrollment() {
   }
 }
 
-// ─── CARGAR CLASES INSCRITAS DEL ESTUDIANTE (HU-18) ───
+// ─── CARGAR CLASES INSCRITAS DEL ESTUDIANTE ───
 async function loadStudentCourses() {
   const grid = document.getElementById("student-courses-grid");
   if (!grid) return;
@@ -1102,7 +1126,7 @@ async function loadStudentCourses() {
   }
 }
 
-// ─── CARGAR CLASES ASIGNADAS DEL DOCENTE (HU-17) ───
+// ─── CARGAR CLASES ASIGNADAS DEL DOCENTE ───
 async function loadTeacherCourses() {
   const grid = document.getElementById("teacher-courses-grid");
   if (!grid) return;
@@ -1256,7 +1280,7 @@ async function saveNewScheduleSession() {
     if (res.ok) {
       toast("Grupo de curso creado exitosamente", "success");
       closeCreateScheduleSessionModal();
-      // HU-15: Actualización en tiempo real de la tabla de gestión de cursos
+      // Actualización en tiempo real de la tabla de gestión de cursos
       loadAdminCourses();
       // Refresh the schedule screen if it's loaded
       if (typeof loadAdminSchedule === "function") loadAdminSchedule();
@@ -1609,7 +1633,7 @@ function checkConsecutiveDays(courseCode, courseGroup, toDay, fromDay) {
   
   const totalSessions = scheduledDays.length + 1;
   
-  // HU-12: Policy only for 2 or 3 weekly sessions
+  // Policy only for 2 or 3 weekly sessions
   if (totalSessions !== 2 && totalSessions !== 3) {
     return true;
   }
@@ -2582,8 +2606,8 @@ window.loadTeacherAttendanceClasses = loadTeacherAttendanceClasses;
 window.loadClassStudentsForAttendance = loadClassStudentsForAttendance;
 window.markStudentAttendance = markStudentAttendance;
 
-// ─── UNIFIED USER MANAGEMENT (HU-17) ──────────────────────────────────────────
-let allUsersCache = []; // HU-??: Global cache for filtering
+// ─── UNIFIED USER MANAGEMENT ───
+let allUsersCache = [];
 
 async function loadAdminUsers() {
   const tbody = document.getElementById("admin-users-table-body");
@@ -2622,29 +2646,38 @@ function renderAdminUsers(users) {
     return;
   }
 
-  tbody.innerHTML = users.map(u => `
-    <tr class="hover:bg-gray-50 transition-colors">
-      <td class="p-3 border-b font-mono text-xs text-gray-500">${u.id}</td>
-      <td class="p-3 border-b font-medium text-gray-800">${u.name}</td>
-      <td class="p-3 border-b text-gray-600">${u.email}</td>
-      <td class="p-3 border-b">
-        <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${u.rawRole === 'TEACHER' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}">
-          ${u.role}
-        </span>
-      </td>
-      <td class="p-3 border-b text-gray-400 font-mono text-xs tracking-widest">••••••••</td>
-      <td class="p-3 border-b">
-        <div class="flex items-center gap-2">
-          <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')" title="Editar">
-            <i class="fas fa-user-edit"></i>
-          </button>
-          <button class="text-red-500 hover:text-red-700 font-medium text-sm" onclick="deleteAdminUser('${u.uuid}', '${u.name}')" title="Eliminar">
-            <i class="fas fa-trash"></i>
-          </button>
-        </div>
-      </td>
-    </tr>
-  `).join("");
+  tbody.innerHTML = users.map(u => {
+    const teacherAction = u.rawRole === 'TEACHER' 
+      ? `<button class="text-blue-600 hover:text-blue-900 font-medium text-sm flex items-center gap-1" onclick="openTeacherDetailsModal('${u.uuid}', '${u.name}')" title="Perfil Docente">
+          <i class="fas fa-chalkboard-user"></i> Perfil
+         </button>` 
+      : '';
+
+    return `
+      <tr class="hover:bg-gray-50 transition-colors">
+        <td class="p-3 border-b font-mono text-xs text-gray-500">${u.id}</td>
+        <td class="p-3 border-b font-medium text-gray-800">${u.name}</td>
+        <td class="p-3 border-b text-gray-600">${u.email}</td>
+        <td class="p-3 border-b">
+          <span class="px-2 py-1 rounded-full text-[10px] font-bold uppercase ${u.rawRole === 'TEACHER' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}">
+            ${u.role}
+          </span>
+        </td>
+        <td class="p-3 border-b text-gray-400 font-mono text-xs tracking-widest">••••••••</td>
+        <td class="p-3 border-b">
+          <div class="flex items-center gap-3">
+            ${teacherAction}
+            <button class="text-purple-600 hover:text-purple-900 font-medium text-sm" onclick="toast('Edición global próximamente', 'info')" title="Editar">
+              <i class="fas fa-user-edit"></i>
+            </button>
+            <button class="text-red-500 hover:text-red-700 font-medium text-sm" onclick="deleteAdminUser('${u.uuid}', '${u.name}')" title="Eliminar">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 async function deleteAdminUser(uuid, name) {
@@ -2684,7 +2717,7 @@ function filterUsersById() {
 }
 window.filterUsersById = filterUsersById;
 
-// ─── RE-AUTHENTICATION LOGIC (HU-17) ─────────────────────────────────────────
+// ─── RE-AUTHENTICATION LOGIC ───
 function openReAuthModal() {
   document.getElementById("reauth-password").value = "";
   document.getElementById("modal-reauth").style.display = "flex";
@@ -2726,7 +2759,7 @@ async function verifyReAuth() {
   }
 }
 
-// ─── USER CREATION LOGIC (HU-17) ─────────────────────────────────────────────
+// ─── USER CREATION LOGIC ───
 function openCreateUserModal() {
   document.getElementById("create-user-name").value = "";
   document.getElementById("create-user-email").value = "";
@@ -2765,7 +2798,7 @@ async function saveNewUser() {
     password,
     userType: role, // STUDENT, TEACHER, ADMIN
     userName: email.split("@")[0],
-    // Generar IDs temporales si no existen (HU-17)
+    // Generar IDs temporales si no existen
     studentId: role === 'STUDENT' ? "STU-" + Math.floor(Math.random() * 1000000) : null,
     teacherCode: role === 'TEACHER' ? "TEA-" + Math.floor(Math.random() * 1000000) : null,
     adminId: role === 'ADMIN' ? "ADM-" + Math.floor(Math.random() * 1000000) : null
@@ -2802,7 +2835,7 @@ window.openCreateUserModal = openCreateUserModal;
 window.closeCreateUserModal = closeCreateUserModal;
 window.saveNewUser = saveNewUser;
 
-// ─── GRUPOS EN RIESGO (HU-8) ───
+// ─── GRUPOS EN RIESGO ───
 async function openAtRiskGroupsModal() {
   const tbody = document.getElementById("at-risk-groups-table-body");
   if (!tbody) return;
