@@ -62,11 +62,8 @@ public class StudentScheduleService {
       CourseGroup cg = courseGroupRepository.findById(dto.getCourseGroupId())
           .orElseThrow(() -> new RuntimeException("Grupo de curso no encontrado"));
 
-      DayOfWeek day;
-      try {
-        day = DayOfWeek.valueOf(dto.getDay().toUpperCase());
-      } catch (Exception e) {
-        // If it fails to parse, try to handle Spanish days or just continue
+      DayOfWeek day = parseDayOfWeek(dto.getDay());
+      if (day == null) {
         continue;
       }
 
@@ -75,6 +72,34 @@ public class StudentScheduleService {
     }
 
     scheduleRepository.saveAll(entities);
+  }
+
+  private DayOfWeek parseDayOfWeek(String dayStr) {
+    if (dayStr == null) return null;
+    String cleanStr = dayStr.trim().toUpperCase()
+        .replaceAll("[ÁÉÍÓÚ]", "AEIOU");
+    switch (cleanStr) {
+      case "LUNES": case "LUN":
+        return DayOfWeek.MONDAY;
+      case "MARTES": case "MAR":
+        return DayOfWeek.TUESDAY;
+      case "MIERCOLES": case "MIE":
+        return DayOfWeek.WEDNESDAY;
+      case "JUEVES": case "JUE":
+        return DayOfWeek.THURSDAY;
+      case "VIERNES": case "VIE":
+        return DayOfWeek.FRIDAY;
+      case "SABADO": case "SAB":
+        return DayOfWeek.SATURDAY;
+      case "DOMINGO": case "DOM":
+        return DayOfWeek.SUNDAY;
+      default:
+        try {
+          return DayOfWeek.valueOf(cleanStr);
+        } catch (Exception e) {
+          return null;
+        }
+    }
   }
 
   /**
@@ -87,6 +112,37 @@ public class StudentScheduleService {
   public List<StudentScheduleSlotDto> getStudentSchedule(String studentId) {
     Student student = findStudentFlexible(studentId);
     List<StudentScheduleSlot> entities = scheduleRepository.findByStudent(student);
+    List<StudentScheduleSlotDto> dtos = new ArrayList<>();
+
+    for (StudentScheduleSlot entity : entities) {
+      StudentScheduleSlotDto dto = new StudentScheduleSlotDto();
+      dto.setCourseGroupId(entity.getCourseGroup().getCourseGroupId());
+      dto.setCourseCode(entity.getCourseGroup().getCode());
+
+      Subject subject = entity.getCourseGroup().getSubject();
+      dto.setSubjectName(subject != null ? subject.getSubjectName()
+          : entity.getCourseGroup().getCode());
+
+      dto.setDay(entity.getDay().name());
+      dto.setSlot(entity.getTimeSlot());
+      dtos.add(dto);
+    }
+
+    return dtos;
+  }
+
+  /**
+   * Retrieves all scheduled slots for a specific teacher.
+   *
+   * @param teacherId the ID or teacherCode of the teacher
+   * @return a list of schedule slot DTOs
+   */
+  @Transactional(readOnly = true)
+  public List<StudentScheduleSlotDto> getTeacherSchedule(String teacherId) {
+    List<StudentScheduleSlot> entities = scheduleRepository.findByCourseGroup_Teacher_TeacherCode(teacherId);
+    if (entities.isEmpty()) {
+      entities = scheduleRepository.findByCourseGroup_Teacher_Id(teacherId);
+    }
     List<StudentScheduleSlotDto> dtos = new ArrayList<>();
 
     for (StudentScheduleSlot entity : entities) {
