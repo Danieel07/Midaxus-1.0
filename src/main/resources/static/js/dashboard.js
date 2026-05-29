@@ -65,8 +65,7 @@ const ROLES = {
       { label:"My Groups",    value:"...", icon:"👥", bg:"bg-violet-100",  dataKey:"myGroups"    }
     ],
     quickActions: [
-      { label:"Registrar Asistencia", desc:"Gestionar asistencias", emoji:"✏️", fn: ()=>navigateTo("attendance") },
-      { label:"Configuración", desc:"Ajustes de perfil", emoji:"⚙️", fn: ()=>toast("Módulo en construcción", "info") }
+      { label:"Registrar Asistencia", desc:"Gestionar asistencias", emoji:"✏️", fn: ()=>navigateTo("attendance") }
     ],
     showConflictAlert: false,
     scheduleEditable: false
