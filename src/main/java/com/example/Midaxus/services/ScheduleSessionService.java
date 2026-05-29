@@ -75,16 +75,41 @@ public class ScheduleSessionService implements IScheduleSessionService {
       // Find or create VinculationSlot
       VinculationSlot vs = new VinculationSlot();
       vs.setVinculationSlotId(UUID.randomUUID().toString());
-      try {
-        vs.setDay(DayOfWeek.valueOf(dto.getDay().toUpperCase()));
-      } catch (Exception e) {
-        vs.setDay(DayOfWeek.MONDAY); // fallback
-      }
+      DayOfWeek day = parseDayOfWeek(dto.getDay());
+      vs.setDay(day != null ? day : DayOfWeek.MONDAY);
       vs = vinculationSlotRepository.save(vs);
       session.setVinculationSlot(vs);
     }
 
     return scheduleSessionRepository.save(session);
+  }
+
+  private DayOfWeek parseDayOfWeek(String dayStr) {
+    if (dayStr == null) return null;
+    String cleanStr = dayStr.trim().toUpperCase()
+        .replaceAll("[ÁÉÍÓÚ]", "AEIOU");
+    switch (cleanStr) {
+      case "LUNES": case "LUN":
+        return DayOfWeek.MONDAY;
+      case "MARTES": case "MAR":
+        return DayOfWeek.TUESDAY;
+      case "MIERCOLES": case "MIE":
+        return DayOfWeek.WEDNESDAY;
+      case "JUEVES": case "JUE":
+        return DayOfWeek.THURSDAY;
+      case "VIERNES": case "VIE":
+        return DayOfWeek.FRIDAY;
+      case "SABADO": case "SAB":
+        return DayOfWeek.SATURDAY;
+      case "DOMINGO": case "DOM":
+        return DayOfWeek.SUNDAY;
+      default:
+        try {
+          return DayOfWeek.valueOf(cleanStr);
+        } catch (Exception e) {
+          return null;
+        }
+    }
   }
 
   /**

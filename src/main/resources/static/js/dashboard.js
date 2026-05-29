@@ -6,6 +6,19 @@
 const STU_DAYS  = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const STU_SLOTS_DEFAULT = ["07:00-09:00","09:00-11:00","11:00-13:00","13:00-14:00","14:00-16:00","16:00-18:00"];
 let STU_SLOTS = [...STU_SLOTS_DEFAULT];
+
+function toSpanishDay(dayStr) {
+  if (!dayStr) return '';
+  const d = dayStr.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (d === 'MONDAY' || d === 'LUNES' || d === 'LUN') return 'Lunes';
+  if (d === 'TUESDAY' || d === 'MARTES' || d === 'MAR') return 'Martes';
+  if (d === 'WEDNESDAY' || d === 'MIERCOLES' || d === 'MIE') return 'Miércoles';
+  if (d === 'THURSDAY' || d === 'JUEVES' || d === 'JUE') return 'Jueves';
+  if (d === 'FRIDAY' || d === 'VIERNES' || d === 'VIE') return 'Viernes';
+  if (d === 'SATURDAY' || d === 'SABADO' || d === 'SAB') return 'Sábado';
+  if (d === 'SUNDAY' || d === 'DOMINGO' || d === 'DOM') return 'Domingo';
+  return dayStr;
+}
 const ROLES = {
   ADMIN: {
     badge: "ADMIN",
@@ -189,6 +202,9 @@ document.addEventListener("DOMContentLoaded", () => {
   
   const tc = document.getElementById("teacher-courses");
   if (tc) tc.style.display = session.role === "TEACHER" ? "block" : "none";
+
+  const ts = document.getElementById("teacher-schedule-section");
+  if (ts) ts.style.display = session.role === "TEACHER" ? "block" : "none";
 
   buildAvailGrid();
   initBackButtons();
@@ -728,6 +744,19 @@ async function openTeacherDetailsModal(uuid, teacherName) {
   const matrix = document.getElementById("teacher-avail-matrix");
   const compBox = document.getElementById("teacher-competences-list");
   
+  // Cargar políticas institucionalmente dinámicas para usar los bloques correctos
+  if (!studentPolicies) {
+    try {
+      const pRes = await fetch('/api/policies', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
+      if (pRes.ok) {
+        studentPolicies = await pRes.json();
+        generateSlotsFromPolicies();
+      }
+    } catch(e) { console.warn("Error cargando políticas", e); }
+  }
+  
+  const slotsToUse = (STU_SLOTS && STU_SLOTS.length > 0) ? STU_SLOTS : STU_SLOTS_DEFAULT;
+  
   if(matrix) {
     // Reset Matrix with headers (Extremely robust approach)
     matrix.innerHTML = `
@@ -740,8 +769,8 @@ async function openTeacherDetailsModal(uuid, teacherName) {
       <div class="bg-gray-100 py-2 border-b border-gray-200 text-[10px] font-bold text-gray-600">SAB</div>
     `;
     
-    // Generar filas usando las constantes globales
-    STU_SLOTS_DEFAULT.forEach(slot => {
+    // Generar filas usando los slots correctos
+    slotsToUse.forEach(slot => {
       const timeLabel = document.createElement("div");
       timeLabel.className = "bg-white py-3 border-b border-r border-gray-200 text-[9px] font-bold text-gray-400 flex items-center justify-center";
       timeLabel.textContent = slot;
@@ -791,9 +820,14 @@ async function openTeacherDetailsModal(uuid, teacherName) {
     });
     
     if (teacher.availabilities) {
+      const normTime = (t) => {
+        if (Array.isArray(t)) return String(t[0]).padStart(2,'0') + ':' + String(t[1]||0).padStart(2,'0');
+        if (typeof t === 'string') return t.substring(0,5);
+        return '';
+      };
       teacher.availabilities.forEach(av => {
-        const day = av.dayOfWeek.toUpperCase();
-        const start = av.startTime.substring(0,5);
+        const day = (av.dayOfWeek || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const start = normTime(av.startTime);
         const cell = Array.from(document.querySelectorAll(".avail-matrix-cell")).find(c => 
           c.dataset.day === day && c.dataset.slot.startsWith(start)
         );
@@ -1271,6 +1305,7 @@ async function loadTeacherCourses() {
   grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">⏳ Cargando tus clases...</p>';
 
   let teacherId = session.id;
+  let teacherAvail = [];
   try {
     const tRes = await fetch('/api/teachers', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token } });
     if (tRes.ok) {
@@ -1278,6 +1313,8 @@ async function loadTeacherCourses() {
       const me = teachers.find(t => t.email === session.email);
       if (me && me.teacherCode) teacherId = me.teacherCode;
       else if (me && me.id) teacherId = me.id;
+      
+      if (me && me.availabilities) teacherAvail = me.availabilities;
     }
   } catch(e) { console.warn("Fallback teacherId", e); }
 
@@ -1289,6 +1326,13 @@ async function loadTeacherCourses() {
 
     if (!coursesRes.ok) {
       grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes clases asignadas actualmente.</p>';
+      
+      // Intentar cargar horario igualmente si el contenedor existe
+      const schedSection = document.getElementById("teacher-schedule-section");
+      if (schedSection) {
+        schedSection.style.display = "block";
+        buildTeacherScheduleGrid(teacherId, teacherAvail);
+      }
       return;
     }
 
@@ -1297,6 +1341,12 @@ async function loadTeacherCourses() {
 
     if (!courses || courses.length === 0) {
       grid.innerHTML = '<p class="text-gray-400 text-center col-span-full py-8">📭 No tienes clases asignadas actualmente.</p>';
+      
+      const schedSection = document.getElementById("teacher-schedule-section");
+      if (schedSection) {
+        schedSection.style.display = "block";
+        buildTeacherScheduleGrid(teacherId, teacherAvail);
+      }
       return;
     }
 
@@ -1324,9 +1374,152 @@ async function loadTeacherCourses() {
       grid.innerHTML = htmlContent;
     }
 
+    // Cargar horario semanal
+    const schedSection = document.getElementById("teacher-schedule-section");
+    if (schedSection) {
+      schedSection.style.display = "block";
+      buildTeacherScheduleGrid(teacherId, teacherAvail);
+    }
+
   } catch (err) {
     console.error("Error cargando cursos del docente:", err);
     grid.innerHTML = `<p class="text-red-400 text-center col-span-full py-8">❌ Error cargando tus clases: ${err.message}.</p>`;
+  }
+}
+
+async function buildTeacherScheduleGrid(teacherId, availabilities) {
+  const gridBody = document.getElementById("teacher-schedule-grid-body");
+  if (!gridBody) return;
+
+  gridBody.innerHTML = '<div class="py-10 text-center text-indigo-600 animate-pulse font-medium">⏳ Cargando tu horario semanal...</div>';
+
+  try {
+    // 1. Cargar políticas si no están cargadas
+    if (!studentPolicies) {
+      try {
+        const pRes = await fetch('/api/policies', { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
+        if (pRes.ok) {
+          studentPolicies = await pRes.json();
+          generateSlotsFromPolicies();
+        }
+      } catch(e) { console.warn("Error cargando políticas", e); }
+    }
+    const slotsToUse = (STU_SLOTS && STU_SLOTS.length > 0) ? STU_SLOTS : STU_SLOTS_DEFAULT;
+
+    // 2. Cargar clases asignadas (ocupadas)
+    let scheduledSlots = [];
+    try {
+      const schedRes = await fetch(`/api/student-schedules/teacher/${teacherId}`, { headers: { 'Authorization': 'Bearer ' + rawAuth?.token }, cache: 'no-store' });
+      if (schedRes.ok) {
+        scheduledSlots = await schedRes.json();
+      }
+    } catch(e) { console.warn("Error cargando clases del docente", e); }
+
+    // Helper para normalizar el tiempo
+    const normalizeTime = (t) => {
+      if (Array.isArray(t)) {
+        return String(t[0]).padStart(2, '0') + ':' + String(t[1] || 0).padStart(2, '0');
+      }
+      if (typeof t === 'string') return t.substring(0, 5);
+      return '';
+    };
+
+    gridBody.innerHTML = "";
+
+    // 3. Generar filas
+    slotsToUse.forEach(slot => {
+      const [slotStart, slotEnd] = slot.split("-");
+      const row = document.createElement("div");
+      row.className = "grid grid-cols-[100px_repeat(6,1fr)] items-center text-center text-xs divide-x divide-gray-150 min-h-[60px]";
+
+      // Celda de hora
+      const timeCell = document.createElement("div");
+      timeCell.className = "bg-indigo-50/50 py-4 font-bold text-gray-500 flex items-center justify-center h-full";
+      timeCell.textContent = slot;
+      row.appendChild(timeCell);
+
+      // Celdas de días
+      STU_DAYS.forEach(day => {
+        const dayCell = document.createElement("div");
+        dayCell.className = "p-2 flex flex-col items-center justify-center h-full transition-all duration-200 relative min-h-[60px]";
+
+        const dayUpper = day.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        // A. Verificar si es almuerzo
+        if (isLunchSlot(slot)) {
+          dayCell.className += " bg-amber-50/40 text-amber-600 font-medium italic";
+          dayCell.textContent = "Almuerzo";
+          row.appendChild(dayCell);
+          return;
+        }
+
+        // B. Buscar si hay una clase asignada en este slot (Ocupado)
+        const classesInSlot = scheduledSlots.filter(s => {
+          const sDay = toSpanishDay(s.day).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return sDay === dayUpper && s.slot === slot;
+        });
+
+        if (classesInSlot.length > 0) {
+          // El profesor está dando clase en esta franja
+          const uniqueClasses = [];
+          const seen = new Set();
+          classesInSlot.forEach(c => {
+            const key = `${c.courseCode}-${c.subjectName}`;
+            if (!seen.has(key)) {
+              seen.add(key);
+              uniqueClasses.push(c);
+            }
+          });
+
+          dayCell.className += " bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-sm font-semibold rounded-lg m-1 p-1 flex flex-col justify-center gap-0.5";
+          
+          uniqueClasses.forEach(uc => {
+            const classTitle = document.createElement("div");
+            classTitle.className = "text-[10px] uppercase font-black tracking-tight leading-none text-indigo-100";
+            classTitle.textContent = uc.courseCode;
+
+            const subjectLabel = document.createElement("div");
+            subjectLabel.className = "text-[11px] font-bold leading-tight truncate max-w-full";
+            subjectLabel.textContent = uc.subjectName;
+
+            const descLabel = document.createElement("div");
+            descLabel.className = "text-[9px] text-indigo-200 font-semibold";
+            descLabel.textContent = `Grupo ${uc.courseCode}`;
+
+            dayCell.appendChild(classTitle);
+            dayCell.appendChild(subjectLabel);
+            dayCell.appendChild(descLabel);
+          });
+
+          row.appendChild(dayCell);
+          return;
+        }
+
+        // C. Si no hay clase, verificar si el docente configuró esta franja como Disponible
+        const isAvailable = availabilities && availabilities.some(av => {
+          const avDay = (av.dayOfWeek || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          const avStart = normalizeTime(av.startTime);
+          const avEnd = normalizeTime(av.endTime);
+          return avDay === dayUpper && avStart <= slotStart && avEnd >= slotEnd;
+        });
+
+        if (isAvailable) {
+          dayCell.className += " bg-emerald-50 text-emerald-700 font-bold border border-emerald-200 rounded-lg m-1 flex flex-col justify-center";
+          dayCell.innerHTML = `<span class="text-[10px] uppercase tracking-wide opacity-80 font-extrabold text-emerald-600">Disponible</span>`;
+        } else {
+          dayCell.className += " bg-gray-100/70 text-gray-400 border border-gray-150/40 rounded-lg m-1 flex flex-col justify-center";
+          dayCell.innerHTML = `<span class="text-[9px] font-medium opacity-65">No Disp.</span>`;
+        }
+
+        row.appendChild(dayCell);
+      });
+
+      gridBody.appendChild(row);
+    });
+
+  } catch (err) {
+    console.error("Error generando horario del docente:", err);
+    gridBody.innerHTML = `<div class="py-10 text-center text-red-500 font-medium">❌ Error cargando horario: ${err.message}</div>`;
   }
 }
 
@@ -1656,8 +1849,8 @@ async function loadStudentScheduleGrid(body) {
             // Transformar array en mapa {slot: {day: {code, subjectName, group, ...}}}
             slots.forEach(s => {
                 if (!apiData[s.slot]) apiData[s.slot] = {};
-                // Formatear el día de regreso a Capitalized (ej. "MONDAY" -> "Monday")
-                const dayStr = s.day.charAt(0) + s.day.slice(1).toLowerCase();
+                // Formatear el día de regreso usando el helper robusto
+                const dayStr = toSpanishDay(s.day);
                 apiData[s.slot][dayStr] = {
                     code: s.subjectName || s.courseCode, // Mostrar nombre si es posible
                     group: s.courseCode ? `Grupo ${s.courseCode}` : '',
@@ -2026,7 +2219,7 @@ async function initStudentScheduleBuilder() {
             if (Array.isArray(savedSlots)) {
                 savedSlots.forEach(s => {
                     if (!s || !s.day || !s.slot) return;
-                    const dayFormatted = s.day.charAt(0) + s.day.slice(1).toLowerCase();
+                    const dayFormatted = toSpanishDay(s.day);
                     const poolIdx = studentPool.findIndex(p => p && p.courseGroupId === s.courseGroupId);
                     if (poolIdx !== -1) {
                         const item = studentPool.splice(poolIdx, 1)[0];
@@ -2287,13 +2480,26 @@ function validateStudentPlacement(item, toDay, toSlot, fromDay) {
 
   // 2. Disponibilidad del Profesor (ESTRICTO)
   const teacher = allTeachersData.find(t => t.id === item.teacherId || t.teacherCode === item.teacherId);
-  if (teacher && teacher.availabilities) {
+  if (teacher && teacher.availabilities && teacher.availabilities.length > 0) {
     const dayUpper = toDay.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    const [slotStart] = toSlot.split("-");
+    const [slotStart, slotEnd] = toSlot.split("-");
     
+    // Helper: normalize LocalTime from backend (can be array [8,0] or string "08:00:00" or "08:00")
+    const normalizeTime = (t) => {
+      if (Array.isArray(t)) {
+        return String(t[0]).padStart(2, '0') + ':' + String(t[1] || 0).padStart(2, '0');
+      }
+      if (typeof t === 'string') return t.substring(0, 5);
+      return '';
+    };
+
     const isAvailable = teacher.availabilities.some(av => {
-      return av.dayOfWeek.toUpperCase() === dayUpper && 
-             av.startTime.substring(0,5) === slotStart;
+      const avDay = (av.dayOfWeek || '').toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const avStart = normalizeTime(av.startTime);
+      const avEnd = normalizeTime(av.endTime);
+      
+      // Permitir cualquier disponibilidad que cubra completamente el slot del estudiante
+      return avDay === dayUpper && avStart <= slotStart && avEnd >= slotEnd;
     });
 
     if (!isAvailable) {

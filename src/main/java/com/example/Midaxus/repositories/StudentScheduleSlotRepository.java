@@ -14,6 +14,8 @@ import java.util.List;
 public interface StudentScheduleSlotRepository extends JpaRepository<StudentScheduleSlot, String> {
   List<StudentScheduleSlot> findByStudent(Student student);
   void deleteByStudent(Student student);
+  List<StudentScheduleSlot> findByCourseGroup_Teacher_TeacherCode(String teacherCode);
+  List<StudentScheduleSlot> findByCourseGroup_Teacher_Id(String id);
 }
 
 

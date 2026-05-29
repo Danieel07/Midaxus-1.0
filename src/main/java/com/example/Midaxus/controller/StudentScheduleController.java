@@ -49,5 +49,16 @@ public class StudentScheduleController {
   public ResponseEntity<List<StudentScheduleSlotDto>> getSchedule(@PathVariable String studentId) {
     return ResponseEntity.ok(studentScheduleService.getStudentSchedule(studentId));
   }
+
+  /**
+   * Retrieves the schedule for a specific teacher.
+   *
+   * @param teacherId the ID or teacherCode of the teacher
+   * @return a ResponseEntity containing a list of schedule slot DTOs
+   */
+  @GetMapping("/teacher/{teacherId:.+}")
+  public ResponseEntity<List<StudentScheduleSlotDto>> getTeacherSchedule(@PathVariable String teacherId) {
+    return ResponseEntity.ok(studentScheduleService.getTeacherSchedule(teacherId));
+  }
 }
 
